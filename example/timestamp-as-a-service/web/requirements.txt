@@ -1,0 +1,12 @@
+# For the purposes of docker, it's important that you figure out *all* of the libraries & dependencies
+# you need and put them here.
+
+# See, for example, "pip freeze"
+
+Click==7.0
+Flask==1.0.2
+itsdangerous==1.1.0
+Jinja2==2.10.1
+MarkupSafe==1.1.1
+redis==3.2.1
+Werkzeug==0.15.3
