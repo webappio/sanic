@@ -1,0 +1,11 @@
+environments:
+  global:
+    commands:
+    - name: print_hello
+      command: echo hello
+  dev:
+    commands:
+    - name: print_dev
+      command: echo 'in dev!'
+
+

@@ -19,7 +19,10 @@ func main() {
 
   app.Commands = []cli.Command{
     commands.BuildCommand,
+    commands.EnvironmentCommand,
   }
+
+  app.EnableBashCompletion = true
 
   app.Version = "1.0.0"
 
