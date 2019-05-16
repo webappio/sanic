@@ -2,6 +2,7 @@ package shell
 
 import (
 	"io/ioutil"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -45,15 +46,10 @@ PROMPT_COMMAND='PS1="$OLD_PS1"; '"$OLD_PROMPT_COMMAND; "'export PS1="[$SANIC_ENV
 
 	ExecArgs: func(sanicEnv string, requestedCommand []string) (arguments []string) {
 		var argumentPlaceholder strings.Builder //$0 $1 $2 ... $n
-		argumentPlaceholder.WriteString("$0")
-		for i := 1; i <= len(requestedCommand); i++ {
+		for i := 0; i < len(requestedCommand); i++ {
 			argumentPlaceholder.WriteString(` "$`)
-			argumentPlaceholder.WriteString(string(i))
+			argumentPlaceholder.WriteString(strconv.Itoa(i))
 			argumentPlaceholder.WriteRune('"')
-		}
-
-		for i, cmd := range requestedCommand {
-			requestedCommand[i] = `'` + cmd + `'`
 		}
 
 		return append([]string{"-c", argumentPlaceholder.String()}, requestedCommand...)

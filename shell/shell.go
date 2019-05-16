@@ -81,6 +81,7 @@ func EnterExec(sanicEnv, configPath string, requestedCommand []string) (err erro
 		errorCode = 1
 		return
 	}
+	println(strings.Join(shell.ExecArgs(sanicEnv, requestedCommand), ", "))
 	cmd := exec.Command(shellPath, shell.ExecArgs(sanicEnv, requestedCommand)...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

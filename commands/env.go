@@ -9,7 +9,7 @@ import (
 )
 
 func environmentCommandAction(c *cli.Context) error {
-	if c.NArg() != 1 {
+	if c.NArg() == 0 {
 		return newUsageError(c)
 	}
 
@@ -22,9 +22,19 @@ func environmentCommandAction(c *cli.Context) error {
 		return cli.NewExitError(fmt.Sprintf("this command requires a %s file in your current dirctory or a parent directory.", SanicConfigName), 1)
 	}
 
-	return wrapErrorWithExitCode(
-		shell.Enter(sanicEnv, sanicConfig),
-		1)
+	if c.NArg() == 1 {
+		//sanic env dev
+		return wrapErrorWithExitCode(
+			shell.Enter(sanicEnv, sanicConfig),
+			1)
+	} else {
+		//sanic env dev echo hello
+		err, errorCode := shell.EnterExec(sanicEnv, sanicConfig, c.Args()[1:])
+		if err != nil {
+			return wrapErrorWithExitCode(err, errorCode)
+		}
+		return nil
+	}
 }
 
 func environmentCommandAutocomplete(c *cli.Context) {
@@ -62,7 +72,7 @@ func environmentCommandAutocomplete(c *cli.Context) {
 var EnvironmentCommand = cli.Command{
 	Name:         "env",
 	Usage:        "change to a specific (e.g., dev or production) environment named in the configuration",
-	ArgsUsage:    "[environment name]",
+	ArgsUsage:    "[environment name] (single command to execute...)",
 	Action:       environmentCommandAction,
 	BashComplete: environmentCommandAutocomplete,
 }
