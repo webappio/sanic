@@ -20,6 +20,7 @@ func main() {
   app.Commands = []cli.Command{
     commands.BuildCommand,
     commands.EnvironmentCommand,
+    commands.RunCommand,
   }
 
   app.EnableBashCompletion = true

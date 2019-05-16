@@ -6,6 +6,6 @@ environments:
   dev:
     commands:
     - name: print_dev
-      command: echo 'in dev!'
+      command: echo 'in dev!' 2 3 4
 
 
