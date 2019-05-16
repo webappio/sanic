@@ -18,6 +18,10 @@ func getSanicConfigPath() string {
 	return os.Getenv("SANIC_CONFIG")
 }
 
+func getProjectRootPath() string {
+	return os.Getenv("SANIC_ROOT")
+}
+
 func findSanicConfig() (configPath string, err error) {
 	currPath, err := filepath.Abs(".")
 	if err != nil {
