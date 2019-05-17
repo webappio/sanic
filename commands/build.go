@@ -1,18 +1,17 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/build"
 	"github.com/moby/buildkit/client"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
-	"github.com/moby/buildkit/util/appcontext"
 	"github.com/urfave/cli"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sync"
 )
 
 func findServices(path string) ([]string, error) {
@@ -41,6 +40,110 @@ func createBuildInterface(forceNoninteractive bool) build.Interface {
 	return build.NewPlaintextInterface()
 }
 
+func loadDockerTar(ctx context.Context, r io.Reader) error {
+	cmd := exec.Command("docker", "load") //TODO hack
+	cmd.Stdin = r
+	//cmd.Stdout = os.Stdout intentionally ignored
+	cmd.Stderr = os.Stderr
+	cmd.Start()
+
+	processDone := make(chan error)
+	go func() {
+		processDone <- cmd.Wait()
+		close(processDone)
+	}()
+
+	select {
+	case err := <-processDone:
+		return err
+	case <-ctx.Done():
+		cmd.Process.Kill()
+		return ctx.Err()
+	}
+}
+
+func buildService(
+	serviceDir string,
+	buildkitAddress string,
+	ctx context.Context,
+	logErrorsChannel chan error,
+	buildInterface build.Interface,
+	buildLogger *build.FlatfileLogger) error {
+
+	serviceName := filepath.Base(serviceDir)
+	c, err := client.New(ctx, buildkitAddress, client.WithFailFast())
+	if err != nil {
+		return err
+	}
+	pipeR, pipeW := io.Pipe()
+
+	buildInterface.StartJob(serviceName)
+
+	statusChannel := make(chan *client.SolveStatus)
+	eg, ctx := errgroup.WithContext(ctx)
+	buildDone := make(chan interface{})
+	eg.Go(func() error {
+		_, err = c.Build(
+			ctx,
+			client.SolveOpt{
+				Exports: []client.ExportEntry{
+					{
+						Type: "docker",
+						Attrs: map[string]string{
+							"name": serviceName + ":latest",
+						},
+						Output: pipeW,
+					},
+				},
+				LocalDirs: map[string]string{
+					"context":    serviceDir,
+					"dockerfile": serviceDir,
+				},
+			},
+			"",
+			dockerfile.Build,
+			statusChannel)
+		pipeR.CloseWithError(err)
+		if err != nil {
+			buildInterface.FailJob(serviceName, err)
+		} else {
+			buildInterface.SucceedJob(serviceName)
+		}
+		return err
+	})
+	eg.Go(func() error {
+		if err := loadDockerTar(ctx, pipeR); err != nil {
+			return err
+		}
+		buildDone <- true
+		return pipeR.Close()
+	})
+	eg.Go(func() error {
+		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case status, ok := <-statusChannel:
+				if !ok {
+					return nil
+				}
+				logErr := buildLogger.ProcessStatus(serviceName, status)
+				if logErr != nil {
+					logErrorsChannel <- logErr
+				}
+				buildInterface.ProcessStatus(serviceName, status)
+			}
+		}
+	})
+
+	select {
+	case <-ctx.Done(): //cancelled (e.g., ctrl+c or error returned from goroutine)
+		return ctx.Err()
+	case <-buildDone: //successfully built + loaded
+		return nil
+	}
+}
+
 //adapted from
 //https://web.archive.org/web/20190516153923/https://raw.githubusercontent.com/moby/buildkit/master/examples/build-using-dockerfile/main.go
 func buildCommandAction(cliContext *cli.Context) error {
@@ -54,115 +157,57 @@ func buildCommandAction(cliContext *cli.Context) error {
 	}
 
 	buildInterface := createBuildInterface(cliContext.Bool("plain-interface"))
-	buildLogger := build.FlatfileLogger{
+	defer buildInterface.Close()
+
+	buildLogger := &build.FlatfileLogger{
 		LogDirectory: filepath.Join(projectRoot, "logs"),
 	}
 	defer buildLogger.Close()
-	defer buildInterface.Close()
 
-	var buildJobsGroup sync.WaitGroup
 	jobErrorsChannel := make(chan error)
 	logErrorsChannel := make(chan error, 1024)
+	buildingJobs := 0
 
 	for _, serviceDir := range services {
-		serviceName := filepath.Base(serviceDir)
+		ctx, cancelJob := context.WithCancel(context.Background())
+		buildInterface.AddCancelListener(cancelJob)
 
-		ctx := appcontext.Context()
+		finalServiceDir := serviceDir
 
-		c, err := client.New(ctx, cliContext.String("buildkit-addr"), client.WithFailFast())
-		if err != nil {
-			return err
-		}
-		pipeR, pipeW := io.Pipe()
-		solveOpt, err := solveOpt(serviceDir, pipeW)
-		if err != nil {
-			return err
-		}
-
-		buildInterface.StartJob(serviceName)
-
-		statusChannel := make(chan *client.SolveStatus)
-		eg, ctx := errgroup.WithContext(ctx)
-		eg.Go(func() error {
-			_, err = c.Build(ctx, *solveOpt, "", dockerfile.Build, statusChannel)
-			pipeR.CloseWithError(err)
-			if err != nil {
-				buildInterface.FailJob(serviceName, err)
-			} else {
-				buildInterface.SucceedJob(serviceName)
-			}
-			return err
-		})
-		eg.Go(func() error {
-			if err := loadDockerTar(pipeR); err != nil {
-				return err
-			}
-			return pipeR.Close()
-		})
-		eg.Go(func() error {
-			for status := range statusChannel {
-				logErr := buildLogger.ProcessStatus(serviceName, status)
-				if logErr != nil {
-					logErrorsChannel <- logErr
-				}
-				buildInterface.ProcessStatus(serviceName, status)
-			}
-			return nil
-		})
-
-		buildJobsGroup.Add(1)
 		go func() {
-			defer buildJobsGroup.Done()
-			if err := eg.Wait(); err != nil {
-				buildInterface.FailJob(serviceName, err)
-				jobErrorsChannel <- err
-			}
+			jobErrorsChannel <- buildService(
+				finalServiceDir,
+				cliContext.String("buildkit-addr"),
+				ctx,
+				logErrorsChannel,
+				buildInterface,
+				buildLogger)
 		}()
+		buildingJobs += 1
 	}
 
-	buildJobsGroup.Wait()
+	var jobErrors []error
+	for i := 0; i < buildingJobs; i++ {
+		jobError := <-jobErrorsChannel
+		if jobError == context.Canceled {
+			fmt.Println() //clear the ^C
+			return cli.NewExitError("", 1)
+		}
+		if jobError != nil {
+			jobErrors = append(jobErrors, jobError)
+		}
+	}
+
 	close(jobErrorsChannel)
 	close(logErrorsChannel)
 	for logErr := range logErrorsChannel {
 		fmt.Fprintf(os.Stderr, "Error while attempting to log: %s\n", logErr)
-	}
-	var jobErrors []error
-	for job := range jobErrorsChannel {
-		if job != nil {
-			jobErrors = append(jobErrors, job)
-		}
 	}
 	if len(jobErrors) != 0 {
 		return cli.NewExitError(cli.NewMultiError(jobErrors...).Error(), 1)
 	}
 
 	return nil
-}
-
-func solveOpt(serviceDir string, w io.WriteCloser) (*client.SolveOpt, error) {
-	return &client.SolveOpt{
-		Exports: []client.ExportEntry{
-			{
-				Type: "docker", // TODO: use containerd image store when it is integrated to Docker
-				Attrs: map[string]string{
-					"name": filepath.Base(serviceDir) + ":latest",
-				},
-				Output: w,
-			},
-		},
-		LocalDirs: map[string]string{
-			"context":    serviceDir,
-			"dockerfile": serviceDir,
-		},
-	}, nil
-}
-
-func loadDockerTar(r io.Reader) error {
-	cmd := exec.Command("docker", "load") //TODO hack
-	cmd.Stdin = r
-	//cmd.Stdout = os.Stdout intentionally ignored
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
 }
 
 var BuildCommand = cli.Command{

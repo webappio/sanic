@@ -16,17 +16,18 @@ type interactiveInterfaceJob struct {
 }
 
 type interactiveInterface struct {
-	jobs        map[string]*interactiveInterfaceJob
-	screen      tcell.Screen
-	screenStyle tcell.Style
-	running     bool
+	jobs            map[string]*interactiveInterfaceJob
+	screen          tcell.Screen
+	screenStyle     tcell.Style
+	running         bool
+	cancelListeners []func()
 }
 
 func NewInteractiveInterface() (Interface, error) {
-	ret := interactiveInterface{
+	iface := &interactiveInterface{
 		screenStyle: tcell.StyleDefault,
-		jobs: make(map[string]*interactiveInterfaceJob),
-		running: true,
+		jobs:        make(map[string]*interactiveInterfaceJob),
+		running:     true,
 	}
 
 	tcell.SetEncodingFallback(tcell.EncodingFallbackFail)
@@ -45,26 +46,32 @@ func NewInteractiveInterface() (Interface, error) {
 			if ev == nil {
 				return
 			}
-			switch ev.(type) {
+			switch typedEvent := ev.(type) {
 			case *tcell.EventResize:
-				{
-					ret.redrawScreen()
-					screen.Sync()
+				iface.redrawScreen()
+				screen.Sync()
+			case *tcell.EventKey:
+				switch typedEvent.Key() {
+				case tcell.KeyCtrlC, tcell.KeyEsc, tcell.KeyExit:
+					for _, cancel := range iface.cancelListeners {
+						cancel()
+					}
+					return
 				}
 			}
 		}
 	}()
 
 	go func() {
-		for ret.running {
-			ret.redrawScreen()
+		for iface.running {
+			iface.redrawScreen()
 			time.Sleep(time.Millisecond * 150)
 		}
 	}()
 
-	ret.screen = screen
+	iface.screen = screen
 
-	return &ret, nil
+	return iface, nil
 }
 
 func (iface interactiveInterface) redrawScreen() {
@@ -138,28 +145,28 @@ func (iface interactiveInterface) redrawScreen() {
 	iface.screen.Show()
 }
 
-func (iface interactiveInterface) Close() {
+func (iface *interactiveInterface) Close() {
 	iface.running = false
 	iface.screen.Fini()
 }
 
-func (iface interactiveInterface) StartJob(service string) {
+func (iface *interactiveInterface) StartJob(service string) {
 	iface.jobs[service] = &interactiveInterfaceJob{service: service}
 }
 
-func (iface interactiveInterface) FailJob(service string, err error) {
+func (iface *interactiveInterface) FailJob(service string, err error) {
 	if job, ok := iface.jobs[service]; ok {
 		job.status = "failed"
 	}
 }
 
-func (iface interactiveInterface) SucceedJob(service string) {
+func (iface *interactiveInterface) SucceedJob(service string) {
 	if job, ok := iface.jobs[service]; ok {
 		job.status = "succeeded"
 	}
 }
 
-func (iface interactiveInterface) ProcessStatus(service string, status *client.SolveStatus) {
+func (iface *interactiveInterface) ProcessStatus(service string, status *client.SolveStatus) {
 	job := iface.jobs[service]
 	for _, log := range status.Logs {
 		for _, logLine := range strings.Split(string(log.Data), "\n") {
@@ -171,4 +178,8 @@ func (iface interactiveInterface) ProcessStatus(service string, status *client.S
 			}
 		}
 	}
+}
+
+func (iface *interactiveInterface) AddCancelListener(cancelFunc func()) {
+	iface.cancelListeners = append(iface.cancelListeners, cancelFunc)
 }

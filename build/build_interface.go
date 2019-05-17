@@ -10,4 +10,5 @@ type Interface interface {
 	SucceedJob(service string)
 	ProcessStatus(service string, status *client.SolveStatus)
 	Close()
+	AddCancelListener(cancelFunc func())
 }
