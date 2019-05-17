@@ -23,6 +23,14 @@ func NewPlaintextInterface() Interface {
 	return &ret
 }
 
+func (iface plaintextInterface) Close() {
+	//do nothing
+}
+
+func (iface plaintextInterface) StartJob(service string) {
+	iface.jobs[service] = &plaintextInterfaceJob{}
+}
+
 func (iface plaintextInterface) FailJob(service string, err error) {
 	if job, ok := iface.jobs[service]; ok {
 		logs := job.totalJobLogs.String()
@@ -51,9 +59,6 @@ func (iface plaintextInterface) SucceedJob(service string) {
 }
 
 func (iface plaintextInterface) ProcessStatus(service string, status *client.SolveStatus) {
-	if _, ok := iface.jobs[service]; !ok {
-		iface.jobs[service] = &plaintextInterfaceJob{}
-	}
 	job := iface.jobs[service]
 	logs := job.totalJobLogs
 	for _, log := range status.Logs {

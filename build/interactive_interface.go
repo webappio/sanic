@@ -1,0 +1,174 @@
+package build
+
+import (
+	"github.com/gdamore/tcell"
+	"github.com/moby/buildkit/client"
+	"sort"
+	"strings"
+	"time"
+)
+
+type interactiveInterfaceJob struct {
+	lastNonemptyLog     string
+	lastNonemptyLogTime time.Time
+	status              string
+	service             string
+}
+
+type interactiveInterface struct {
+	jobs        map[string]*interactiveInterfaceJob
+	screen      tcell.Screen
+	screenStyle tcell.Style
+	running     bool
+}
+
+func NewInteractiveInterface() (Interface, error) {
+	ret := interactiveInterface{
+		screenStyle: tcell.StyleDefault,
+		jobs: make(map[string]*interactiveInterfaceJob),
+		running: true,
+	}
+
+	tcell.SetEncodingFallback(tcell.EncodingFallbackFail)
+	screen, err := tcell.NewScreen()
+	if err != nil {
+		return nil, err
+	}
+	if err = screen.Init(); err != nil {
+		return nil, err
+	}
+	screen.Clear()
+
+	go func() {
+		for {
+			ev := screen.PollEvent()
+			if ev == nil {
+				return
+			}
+			switch ev.(type) {
+			case *tcell.EventResize:
+				{
+					ret.redrawScreen()
+					screen.Sync()
+				}
+			}
+		}
+	}()
+
+	go func() {
+		for ret.running {
+			ret.redrawScreen()
+			time.Sleep(time.Millisecond * 150)
+		}
+	}()
+
+	ret.screen = screen
+
+	return &ret, nil
+}
+
+func (iface interactiveInterface) redrawScreen() {
+	width, height := iface.screen.Size()
+
+	var succeededJobs []*interactiveInterfaceJob
+	var failedJobs []*interactiveInterfaceJob
+	var currJobs []*interactiveInterfaceJob
+
+	for _, job := range iface.jobs {
+		switch job.status {
+		case "succeeded":
+			succeededJobs = append(succeededJobs, job)
+		case "failed":
+			failedJobs = append(failedJobs, job)
+		default:
+			currJobs = append(currJobs, job)
+		}
+	}
+
+	sortJobs := func(jobs []*interactiveInterfaceJob) {
+		sort.Slice(jobs, func(i, j int) bool {
+			return jobs[i].service < jobs[j].service
+		})
+	}
+	sortJobs(succeededJobs)
+	sortJobs(failedJobs)
+	sortJobs(currJobs)
+
+	displayAndTruncateString := func(y int, s string, style tcell.Style) {
+		for i := 0; i < width && i < len(s); i++ {
+			iface.screen.SetContent(i, y, []rune(s)[i], []rune{}, style)
+		}
+		for i := len(s); i < width; i++ {
+			iface.screen.SetContent(i, y, ' ', []rune{}, style)
+		}
+	}
+
+	currRenderLine := 0
+
+	failureStyle := iface.screenStyle.Foreground(tcell.NewRGBColor(190, 0, 0))
+	for _, failedJob := range failedJobs {
+		if currRenderLine >= height-1 {
+			break
+		}
+		displayAndTruncateString(currRenderLine, "[failed] "+failedJob.service, failureStyle)
+		displayAndTruncateString(currRenderLine+1, failedJob.lastNonemptyLog, iface.screenStyle)
+		currRenderLine += 2
+	}
+
+	currStyle := iface.screenStyle.Foreground(tcell.NewRGBColor(190, 190, 0))
+	for _, currJob := range currJobs {
+		if currRenderLine >= height-1 {
+			break
+		}
+		displayAndTruncateString(currRenderLine, "[building] "+currJob.service, currStyle)
+		displayAndTruncateString(currRenderLine+1, currJob.lastNonemptyLog, iface.screenStyle)
+		currRenderLine += 2
+	}
+
+	succeededStyle := iface.screenStyle.Foreground(tcell.NewRGBColor(0, 190, 0))
+	for _, succeededJob := range succeededJobs {
+		if currRenderLine >= height-1 {
+			break
+		}
+		displayAndTruncateString(currRenderLine, "[complete] "+succeededJob.service, succeededStyle)
+		displayAndTruncateString(currRenderLine+1, succeededJob.lastNonemptyLog, iface.screenStyle)
+		currRenderLine += 2
+	}
+
+	iface.screen.Show()
+}
+
+func (iface interactiveInterface) Close() {
+	iface.running = false
+	iface.screen.Fini()
+}
+
+func (iface interactiveInterface) StartJob(service string) {
+	iface.jobs[service] = &interactiveInterfaceJob{service: service}
+}
+
+func (iface interactiveInterface) FailJob(service string, err error) {
+	if job, ok := iface.jobs[service]; ok {
+		job.status = "failed"
+	}
+}
+
+func (iface interactiveInterface) SucceedJob(service string) {
+	if job, ok := iface.jobs[service]; ok {
+		job.status = "succeeded"
+	}
+}
+
+func (iface interactiveInterface) ProcessStatus(service string, status *client.SolveStatus) {
+	job := iface.jobs[service]
+	for _, log := range status.Logs {
+		for _, logLine := range strings.Split(string(log.Data), "\n") {
+			logLine = strings.TrimSpace(logLine)
+			if logLine != "" {
+				job.lastNonemptyLog = logLine
+				//notice: server time might drift, so we use local time
+				job.lastNonemptyLogTime = time.Now()
+			}
+		}
+	}
+}

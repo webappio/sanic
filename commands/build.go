@@ -30,15 +30,14 @@ func findServices(path string) ([]string, error) {
 }
 
 func createBuildInterface(forceNoninteractive bool) build.Interface {
-	//TODO
-	//if !forceNoninteractive {
-	//	consoleInterface, err := build.NewCursesInterface()
-	//	if err == nil {
-	//		return consoleInterface
-	//	} else {
-	//		fmt.Fprintf(os.Stderr, "Failed to launch interactive interface: %s\n", err.Error())
-	//	}
-	//}
+	if !forceNoninteractive {
+		interactiveInterface, err := build.NewInteractiveInterface()
+		if err == nil {
+			return interactiveInterface
+		} else {
+			fmt.Fprintf(os.Stderr, "Failed to launch interactive interface: %s\n", err.Error())
+		}
+	}
 	return build.NewPlaintextInterface()
 }
 
@@ -59,6 +58,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 		LogDirectory: filepath.Join(projectRoot, "logs"),
 	}
 	defer buildLogger.Close()
+	defer buildInterface.Close()
 
 	var buildJobsGroup sync.WaitGroup
 	jobErrorsChannel := make(chan error)
@@ -78,6 +78,9 @@ func buildCommandAction(cliContext *cli.Context) error {
 		if err != nil {
 			return err
 		}
+
+		buildInterface.StartJob(serviceName)
+
 		statusChannel := make(chan *client.SolveStatus)
 		eg, ctx := errgroup.WithContext(ctx)
 		eg.Go(func() error {
