@@ -39,7 +39,7 @@ func createBuildInterface(forceNoninteractive bool) build.Interface {
 	//		fmt.Fprintf(os.Stderr, "Failed to launch interactive interface: %s\n", err.Error())
 	//	}
 	//}
-	return &build.PlaintextInterface{}
+	return build.NewPlaintextInterface()
 }
 
 //adapted from
@@ -83,6 +83,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 		eg.Go(func() error {
 			_, err = c.Build(ctx, *solveOpt, "", dockerfile.Build, statusChannel)
 			pipeR.CloseWithError(err)
+			buildInterface.SucceedJob(serviceName, err)
 			return err
 		})
 		eg.Go(func() error {
@@ -150,10 +151,9 @@ func solveOpt(serviceDir string, w io.WriteCloser) (*client.SolveOpt, error) {
 }
 
 func loadDockerTar(r io.Reader) error {
-	// no need to use moby/moby/client here
-	cmd := exec.Command("docker", "load")
+	cmd := exec.Command("docker", "load") //TODO hack
 	cmd.Stdin = r
-	cmd.Stdout = os.Stdout
+	//cmd.Stdout = os.Stdout intentionally ignored
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
