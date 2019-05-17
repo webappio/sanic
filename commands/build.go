@@ -68,7 +68,7 @@ func buildService(
 	ctx context.Context,
 	logErrorsChannel chan error,
 	buildInterface build.Interface,
-	buildLogger *build.FlatfileLogger) error {
+	buildLogger build.Logger) error {
 
 	serviceName := filepath.Base(serviceDir)
 	c, err := client.New(ctx, buildkitAddress, client.WithFailFast())
@@ -159,9 +159,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 	buildInterface := createBuildInterface(cliContext.Bool("plain-interface"))
 	defer buildInterface.Close()
 
-	buildLogger := &build.FlatfileLogger{
-		LogDirectory: filepath.Join(projectRoot, "logs"),
-	}
+	buildLogger := build.NewFlatfileLogger(filepath.Join(projectRoot, "logs"))
 	defer buildLogger.Close()
 
 	jobErrorsChannel := make(chan error)

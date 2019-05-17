@@ -13,18 +13,21 @@ type Logger interface {
 	Close()
 }
 
-type FlatfileLogger struct {
+type flatfileLogger struct {
 	LogDirectory string
 
 	openFiles map[string]*os.File
 }
 
-func (logger FlatfileLogger) ProcessStatus(service string, status *client.SolveStatus) error {
-	var logFile *os.File
-
-	if logger.openFiles == nil {
-		logger.openFiles = make(map[string]*os.File)
+func NewFlatfileLogger(logDirectory string) Logger {
+	return &flatfileLogger{
+		LogDirectory: logDirectory,
+		openFiles:    make(map[string]*os.File),
 	}
+}
+
+func (logger *flatfileLogger) ProcessStatus(service string, status *client.SolveStatus) error {
+	var logFile *os.File
 
 	if existingFile, ok := logger.openFiles[service]; ok {
 		logFile = existingFile
@@ -38,7 +41,7 @@ func (logger FlatfileLogger) ProcessStatus(service string, status *client.SolveS
 		}
 		logFile, err = os.OpenFile(
 			filepath.Join(logger.LogDirectory, service+".log"),
-			os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+			os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			return err
 		}
@@ -57,7 +60,7 @@ func (logger FlatfileLogger) ProcessStatus(service string, status *client.SolveS
 	return nil
 }
 
-func (logger FlatfileLogger) Close() {
+func (logger *flatfileLogger) Close() {
 	for _, f := range logger.openFiles {
 		f.Close()
 	}
