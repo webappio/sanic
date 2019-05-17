@@ -18,7 +18,11 @@ if [ -z "${OLD_PROMPT_COMMAND+x}" ]; then
   OLD_PS1="$PS1"
   export SANIC_ENV='{{.Environment}}'
 fi
-PROMPT_COMMAND='PS1="$OLD_PS1"; '"$OLD_PROMPT_COMMAND; "'export PS1="[$SANIC_ENV] $PS1"; '
+# 1. save exit status of last command (e.g., in case they change prompt color)
+# 2. save old PS1 (e.g., in case they don't set PS1, we don't want it to keep appending [dev]
+# 3. run their prompt command (if any)
+# 4. append [dev] in front
+PROMPT_COMMAND='status=$?; PS1="$OLD_PS1"; ( exit $status; ); '"$OLD_PROMPT_COMMAND"'; PS1="[$SANIC_ENV] $PS1"; '
 `)
 
 		type TemplateData struct {
