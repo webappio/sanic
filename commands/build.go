@@ -33,9 +33,8 @@ func createBuildInterface(forceNoninteractive bool) build.Interface {
 		interactiveInterface, err := build.NewInteractiveInterface()
 		if err == nil {
 			return interactiveInterface
-		} else {
-			fmt.Fprintf(os.Stderr, "Failed to launch interactive interface: %s\n", err.Error())
 		}
+		fmt.Fprintf(os.Stderr, "Failed to launch interactive interface: %s\n", err.Error())
 	}
 	return build.NewPlaintextInterface()
 }
@@ -63,9 +62,9 @@ func loadDockerTar(ctx context.Context, r io.Reader) error {
 }
 
 func buildService(
+	ctx context.Context,
 	serviceDir string,
 	buildkitAddress string,
-	ctx context.Context,
 	logErrorsChannel chan error,
 	buildInterface build.Interface,
 	buildLogger build.Logger) error {
@@ -174,14 +173,14 @@ func buildCommandAction(cliContext *cli.Context) error {
 
 		go func() {
 			jobErrorsChannel <- buildService(
+				ctx,
 				finalServiceDir,
 				cliContext.String("buildkit-addr"),
-				ctx,
 				logErrorsChannel,
 				buildInterface,
 				buildLogger)
 		}()
-		buildingJobs += 1
+		buildingJobs++
 	}
 
 	var jobErrors []error
@@ -208,7 +207,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 	return nil
 }
 
-var BuildCommand = cli.Command{
+var buildCommand = cli.Command{
 	Name:   "build",
 	Usage:  "build some (or all, by default) services",
 	Action: buildCommandAction,

@@ -7,10 +7,12 @@ import (
 	"path/filepath"
 )
 
+//SanicConfigName is the name of the configuration file to read.
+//It also functions as denoting the root directory of the monorepo.
+//sanic env searches for this to allow you to enter environments easily.
 const SanicConfigName = "sanic.yaml"
 
 func getSanicEnv() string {
-	//set in the env command
 	return os.Getenv("SANIC_ENV")
 }
 

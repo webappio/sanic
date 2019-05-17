@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 )
 
+//Logger takes log messages from the buildkit build server(s) and stores them
 type Logger interface {
 	ProcessStatus(service string, status *client.SolveStatus) error
 	Close()
@@ -19,6 +20,7 @@ type flatfileLogger struct {
 	openFiles map[string]*os.File
 }
 
+//NewFlatfileLogger builds a new Logger which writes text logs to (repository root)/logs/(service name).log
 func NewFlatfileLogger(logDirectory string) Logger {
 	return &flatfileLogger{
 		LogDirectory: logDirectory,
@@ -34,10 +36,10 @@ func (logger *flatfileLogger) ProcessStatus(service string, status *client.Solve
 	} else {
 		err := os.MkdirAll(logger.LogDirectory, 0700)
 		if err != nil {
-			return errors.New(fmt.Sprintf(
+			return errors.Errorf(
 				"Could not make the logs output directory at %s: %s",
 				logger.LogDirectory,
-				err.Error()))
+				err.Error())
 		}
 		logFile, err = os.OpenFile(
 			filepath.Join(logger.LogDirectory, service+".log"),
@@ -51,10 +53,10 @@ func (logger *flatfileLogger) ProcessStatus(service string, status *client.Solve
 		logFile.WriteString(fmt.Sprintf("[%s] ", log.Timestamp))
 		_, err := logFile.Write(log.Data)
 		if err != nil {
-			return errors.New(fmt.Sprintf(
+			return errors.Errorf(
 				"Could not write to %s's logs: %s",
 				service,
-				err.Error()))
+				err.Error())
 		}
 	}
 	return nil

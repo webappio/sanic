@@ -23,6 +23,7 @@ type interactiveInterface struct {
 	cancelListeners []func()
 }
 
+//NewInteractiveInterface creates and initializes a new tcell screen and event loop for use as an Interface
 func NewInteractiveInterface() (Interface, error) {
 	iface := &interactiveInterface{
 		screenStyle: tcell.StyleDefault,

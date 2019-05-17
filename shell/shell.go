@@ -27,6 +27,7 @@ func environmentToList(env map[string]string) []string {
 	return result
 }
 
+//EnvironmentVariables returns the current environment variables, appended with Sanic's required variables
 func EnvironmentVariables(sanicEnv, configPath string) []string {
 	envVars := environment()
 	envVars["SANIC_ENV"] = sanicEnv
@@ -36,6 +37,10 @@ func EnvironmentVariables(sanicEnv, configPath string) []string {
 	return environmentToList(envVars)
 }
 
+//Shell is a way to execute commands in, and interact with, Sanic.  It provides methods to:
+//1. enter the shell (e.g., "sanic env dev')
+//2. execute something directly in the shell (e.g., "sanic env dev echo hello world")
+//3. execute something as a shell script in the shell (e.g., "sanic run echo_hello")
 type Shell struct {
 	//Return the arguments to run an interactive version of a specific shell
 	//e.g., if executable is /bin/bash, this might return --rcfile /tmp/blah.bash
@@ -62,6 +67,7 @@ func getShell() (shellPath string, shell *Shell, err error) {
 	return
 }
 
+//Enter : execvp the current process into a new sanic shell. Note: Does not return.
 func Enter(sanicEnv, configPath string) error {
 	shellPath, shell, err := getShell()
 	if err != nil {
@@ -75,7 +81,8 @@ func Enter(sanicEnv, configPath string) error {
 		EnvironmentVariables(sanicEnv, configPath))
 }
 
-func EnterExec(sanicEnv, configPath string, requestedCommand []string) (err error, errorCode int) {
+//EnterExec : execute the given command in the given environment
+func EnterExec(sanicEnv, configPath string, requestedCommand []string) (errorCode int, err error) {
 	shellPath, shell, err := getShell()
 	if err != nil {
 		errorCode = 1
@@ -107,7 +114,8 @@ func EnterExec(sanicEnv, configPath string, requestedCommand []string) (err erro
 	return
 }
 
-func Exec(sanicEnv, configPath string, requestedCommand string) (err error, errorCode int) {
+//Exec : execute the given (shell, given as string) command in the given environment
+func Exec(sanicEnv, configPath string, requestedCommand string) (errorCode int, err error) {
 	shellPath, shell, err := getShell()
 	if err != nil {
 		errorCode = 1

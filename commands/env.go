@@ -27,14 +27,13 @@ func environmentCommandAction(c *cli.Context) error {
 		return wrapErrorWithExitCode(
 			shell.Enter(sanicEnv, sanicConfig),
 			1)
-	} else {
-		//sanic env dev echo hello
-		err, errorCode := shell.EnterExec(sanicEnv, sanicConfig, c.Args()[1:])
-		if err != nil {
-			return wrapErrorWithExitCode(err, errorCode)
-		}
-		return nil
 	}
+	//sanic env dev echo hello
+	errorCode, err := shell.EnterExec(sanicEnv, sanicConfig, c.Args()[1:])
+	if err != nil {
+		return wrapErrorWithExitCode(err, errorCode)
+	}
+	return nil
 }
 
 func environmentCommandAutocomplete(c *cli.Context) {
@@ -69,7 +68,7 @@ func environmentCommandAutocomplete(c *cli.Context) {
 	}
 }
 
-var EnvironmentCommand = cli.Command{
+var environmentCommand = cli.Command{
 	Name:         "env",
 	Usage:        "change to a specific (e.g., dev or production) environment named in the configuration",
 	ArgsUsage:    "[environment name] (single command to execute...)",

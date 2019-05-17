@@ -30,19 +30,18 @@ func runCommandAction(c *cli.Context) error {
 	commandName := c.Args().First()
 	for _, command := range env.Commands {
 		if command.Name == commandName {
-			err, code := shell.Exec(sanicEnv, configPath, command.Command)
+			code, err := shell.Exec(sanicEnv, configPath, command.Command)
 			if code == 0 {
 				return nil
-			} else {
-				return wrapErrorWithExitCode(err, code)
 			}
+			return wrapErrorWithExitCode(err, code)
 		}
 	}
 	return cli.NewExitError("Command "+commandName+" was not found in environment "+sanicEnv+".", 1)
 
 }
 
-var RunCommand = cli.Command{
+var runCommand = cli.Command{
 	Name:   "run",
 	Usage:  "run a configured script in the configuration",
 	Action: runCommandAction,

@@ -34,6 +34,7 @@ func addSignalCanceller(iface *plaintextInterface) {
 	}()
 }
 
+//NewPlaintextInterface initializes a new plaintext (e.g., no advanced terminal required) Interface
 func NewPlaintextInterface() Interface {
 	iface := plaintextInterface{}
 	iface.jobs = make(map[string]*plaintextInterfaceJob)

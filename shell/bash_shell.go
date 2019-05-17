@@ -7,6 +7,7 @@ import (
 	"text/template"
 )
 
+//BashShell returns a new "wrapped" bash-based shell, which has the correct environment variables and prompt
 var BashShell = Shell{
 	EnterArgs: func(sanicEnv string) (arguments []string) {
 		tmpl, err := template.New("rcfile").Parse(
