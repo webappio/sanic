@@ -9,7 +9,7 @@ import (
 
 type Interface interface {
 	FailJob(service string, err error)
-	SucceedJob(service string, err error)
+	SucceedJob(service string)
 	ProcessStatus(service string, status *client.SolveStatus)
 }
 
@@ -29,10 +29,11 @@ func NewPlaintextInterface() Interface {
 	return &ret
 }
 
-func (iface plaintextInterface) FailJob(service string, e error) {
+func (iface plaintextInterface) FailJob(service string, err error) {
 	if job, ok := iface.jobs[service]; ok {
 		logs := job.totalJobLogs.String()
 		if logs != "" {
+			fmt.Printf("[%s] JOB FAILED: %s", service, err.Error())
 			fmt.Printf("[%s] LOGS FOR FAILED SERVICE:\n", service)
 			fmt.Print(logs)
 			fmt.Printf("[%s] END FAILURE LOGS \n\n", service)
@@ -42,7 +43,7 @@ func (iface plaintextInterface) FailJob(service string, e error) {
 	}
 }
 
-func (iface plaintextInterface) SucceedJob(service string, e error) {
+func (iface plaintextInterface) SucceedJob(service string) {
 	if job, ok := iface.jobs[service]; ok {
 		logs := job.totalJobLogs.String()
 		if logs != "" {
@@ -68,16 +69,4 @@ func (iface plaintextInterface) ProcessStatus(service string, status *client.Sol
 		logs.WriteString(fmt.Sprintf("[t+%.2fs] ", log.Timestamp.Sub(job.startTime).Seconds()))
 		logs.Write(log.Data)
 	}
-}
-
-type CursesInterface struct {
-
-}
-
-func (CursesInterface) FailJob(service string, err error) {
-	panic("implement me")
-}
-
-func (CursesInterface) ProcessStatus(service string, status *client.SolveStatus) {
-	panic("implement me")
 }

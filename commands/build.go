@@ -83,7 +83,11 @@ func buildCommandAction(cliContext *cli.Context) error {
 		eg.Go(func() error {
 			_, err = c.Build(ctx, *solveOpt, "", dockerfile.Build, statusChannel)
 			pipeR.CloseWithError(err)
-			buildInterface.SucceedJob(serviceName, err)
+			if err != nil {
+				buildInterface.FailJob(serviceName, err)
+			} else {
+				buildInterface.SucceedJob(serviceName)
+			}
 			return err
 		})
 		eg.Go(func() error {
