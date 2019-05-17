@@ -8,7 +8,7 @@ import (
 )
 
 type Command struct {
-	Name string
+	Name    string
 	Command string
 }
 
@@ -51,4 +51,3 @@ func CurrentEnvironment(cfg *SanicConfig) (*Environment, error) {
 	}
 	return nil, errors.New("the environment you are you does not exist, ensure it was not removed from the configuration")
 }
-

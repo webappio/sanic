@@ -57,7 +57,7 @@ func environmentCommandAutocomplete(c *cli.Context) {
 	var possibleEnvs = []string{}
 
 	for key := range configData.Environments {
-		if (strings.HasPrefix(key, requestedEnv)) {
+		if strings.HasPrefix(key, requestedEnv) {
 			possibleEnvs = append(possibleEnvs, key)
 		}
 	}

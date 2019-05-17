@@ -7,7 +7,7 @@ import (
 	"text/template"
 )
 
-var BashShell = Shell {
+var BashShell = Shell{
 	EnterArgs: func(sanicEnv string) (arguments []string) {
 		tmpl, err := template.New("rcfile").Parse(
 			`

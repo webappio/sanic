@@ -22,7 +22,7 @@ func environment() map[string]string {
 func environmentToList(env map[string]string) []string {
 	result := make([]string, 0, len(env))
 	for k, v := range env {
-		result = append(result, k + "=" + v)
+		result = append(result, k+"="+v)
 	}
 	return result
 }

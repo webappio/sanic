@@ -37,7 +37,7 @@ func (logger FlatfileLogger) ProcessStatus(service string, status *client.SolveS
 				err.Error()))
 		}
 		logFile, err = os.OpenFile(
-			filepath.Join(logger.LogDirectory, service + ".log"),
+			filepath.Join(logger.LogDirectory, service+".log"),
 			os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			return err

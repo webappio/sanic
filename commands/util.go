@@ -54,6 +54,5 @@ func newUsageError(ctx *cli.Context) error {
 }
 
 func wrapErrorWithExitCode(err error, exitCode int) *cli.ExitError {
-	return cli.NewExitError(err.Error(), exitCode);
+	return cli.NewExitError(err.Error(), exitCode)
 }
-

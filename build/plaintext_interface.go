@@ -15,7 +15,7 @@ type plaintextInterfaceJob struct {
 }
 
 type plaintextInterface struct {
-	jobs map[string] *plaintextInterfaceJob
+	jobs            map[string]*plaintextInterfaceJob
 	cancelListeners []func()
 }
 
@@ -36,7 +36,7 @@ func addSignalCanceller(iface *plaintextInterface) {
 
 func NewPlaintextInterface() Interface {
 	iface := plaintextInterface{}
-	iface.jobs = make(map[string] *plaintextInterfaceJob)
+	iface.jobs = make(map[string]*plaintextInterfaceJob)
 	addSignalCanceller(&iface)
 
 	return &iface
