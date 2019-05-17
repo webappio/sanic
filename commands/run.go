@@ -4,7 +4,6 @@ import (
 	"github.com/distributed-containers-inc/sanic/config"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/urfave/cli"
-	"os"
 )
 
 func runCommandAction(c *cli.Context) error {
@@ -39,7 +38,7 @@ func runCommandAction(c *cli.Context) error {
 			}
 		}
 	}
-	return cli.NewExitError("Command "+commandName+" was not found in environment "+os.Getenv("SANIC_ENV")+".", 1)
+	return cli.NewExitError("Command "+commandName+" was not found in environment "+sanicEnv+".", 1)
 
 }
 
