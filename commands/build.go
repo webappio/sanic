@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/distributed-containers-inc/sanic/build"
 	"github.com/moby/buildkit/client"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	"github.com/moby/buildkit/util/appcontext"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 )
 
 func findServices(path string) ([]string, error) {
@@ -26,9 +28,22 @@ func findServices(path string) ([]string, error) {
 	return ret, err
 }
 
+func createBuildInterface(forceNoninteractive bool) build.Interface {
+	//TODO
+	//if !forceNoninteractive {
+	//	consoleInterface, err := build.NewCursesInterface()
+	//	if err == nil {
+	//		return consoleInterface
+	//	} else {
+	//		fmt.Fprintf(os.Stderr, "Failed to launch interactive interface: %s\n", err.Error())
+	//	}
+	//}
+	return &build.PlaintextInterface{}
+}
+
 //adapted from
 //https://web.archive.org/web/20190516153923/https://raw.githubusercontent.com/moby/buildkit/master/examples/build-using-dockerfile/main.go
-func buildCommandAction(clicontext *cli.Context) error {
+func buildCommandAction(cliContext *cli.Context) error {
 	projectRoot := getProjectRootPath()
 	if projectRoot == "" {
 		return cli.NewExitError("you must be in an environment to build, see 'sanic env'", 1)
@@ -38,13 +53,17 @@ func buildCommandAction(clicontext *cli.Context) error {
 		return wrapErrorWithExitCode(err, 1)
 	}
 
+	buildInterface := createBuildInterface(cliContext.Bool("plain-interface"))
+
+	var buildJobsGroup sync.WaitGroup
+	jobErrorsChannel := make(chan error)
+
 	for _, serviceDir := range services {
-		print("Building service: ")
-		println(filepath.Base(serviceDir))
+		serviceName := filepath.Base(serviceDir)
 
 		ctx := appcontext.Context()
 
-		c, err := client.New(ctx, clicontext.String("buildkit-addr"), client.WithFailFast())
+		c, err := client.New(ctx, cliContext.String("buildkit-addr"), client.WithFailFast())
 		if err != nil {
 			return err
 		}
@@ -66,10 +85,32 @@ func buildCommandAction(clicontext *cli.Context) error {
 			}
 			return pipeR.Close()
 		})
-		if err := eg.Wait(); err != nil {
-			return err
+		eg.Go(func() error {
+			for status := range ch {
+				buildInterface.ProcessStatus(serviceName, status)
+			}
+			return nil
+		})
+		buildJobsGroup.Add(1)
+		go func() {
+			defer buildJobsGroup.Done()
+			if err := eg.Wait(); err != nil {
+				buildInterface.FailJob(serviceName, err)
+				jobErrorsChannel <- err
+			}
+		}()
+	}
+
+	buildJobsGroup.Wait()
+	close(jobErrorsChannel)
+	var jobErrors []error
+	for job := range jobErrorsChannel {
+		if job != nil {
+			jobErrors = append(jobErrors, job)
 		}
-		return nil
+	}
+	if len(jobErrors) != 0 {
+		return cli.NewExitError(cli.NewMultiError(jobErrors...).Error(), 1)
 	}
 
 	return nil
@@ -112,6 +153,11 @@ var BuildCommand = cli.Command{
 			Usage:  "buildkit daemon address",
 			EnvVar: "BUILDKIT_HOST",
 			Value:  "tcp://0.0.0.0:2149", //see hack/start_buildkitd.sh
+		},
+		cli.BoolFlag{
+			Name:   "plain-interface",
+			Usage:  "use a plaintext interface",
+			EnvVar: "PLAINTEXT_INTERFACE",
 		},
 	},
 }
