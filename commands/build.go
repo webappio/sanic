@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"github.com/distributed-containers-inc/sanic/build"
 	"github.com/moby/buildkit/client"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
@@ -54,9 +55,14 @@ func buildCommandAction(cliContext *cli.Context) error {
 	}
 
 	buildInterface := createBuildInterface(cliContext.Bool("plain-interface"))
+	buildLogger := build.FlatfileLogger{
+		LogDirectory: filepath.Join(projectRoot, "logs"),
+	}
+	defer buildLogger.Close()
 
 	var buildJobsGroup sync.WaitGroup
 	jobErrorsChannel := make(chan error)
+	logErrorsChannel := make(chan error, 1024)
 
 	for _, serviceDir := range services {
 		serviceName := filepath.Base(serviceDir)
@@ -72,10 +78,10 @@ func buildCommandAction(cliContext *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		ch := make(chan *client.SolveStatus)
+		statusChannel := make(chan *client.SolveStatus)
 		eg, ctx := errgroup.WithContext(ctx)
 		eg.Go(func() error {
-			_, err = c.Build(ctx, *solveOpt, "", dockerfile.Build, ch)
+			_, err = c.Build(ctx, *solveOpt, "", dockerfile.Build, statusChannel)
 			pipeR.CloseWithError(err)
 			return err
 		})
@@ -86,11 +92,16 @@ func buildCommandAction(cliContext *cli.Context) error {
 			return pipeR.Close()
 		})
 		eg.Go(func() error {
-			for status := range ch {
+			for status := range statusChannel {
+				logErr := buildLogger.ProcessStatus(serviceName, status)
+				if logErr != nil {
+					logErrorsChannel <- logErr
+				}
 				buildInterface.ProcessStatus(serviceName, status)
 			}
 			return nil
 		})
+
 		buildJobsGroup.Add(1)
 		go func() {
 			defer buildJobsGroup.Done()
@@ -103,6 +114,10 @@ func buildCommandAction(cliContext *cli.Context) error {
 
 	buildJobsGroup.Wait()
 	close(jobErrorsChannel)
+	close(logErrorsChannel)
+	for logErr := range logErrorsChannel {
+		fmt.Fprintf(os.Stderr, "Error while attempting to log: %s\n", logErr)
+	}
 	var jobErrors []error
 	for job := range jobErrorsChannel {
 		if job != nil {
