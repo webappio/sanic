@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+
 	app := cli.NewApp()
 
 	app.Flags = []cli.Flag{
@@ -17,11 +18,7 @@ func main() {
 		},
 	}
 
-	app.Commands = []cli.Command{
-		commands.BuildCommand,
-		commands.EnvironmentCommand,
-		commands.RunCommand,
-	}
+	app.Commands = commands.Commands
 
 	app.EnableBashCompletion = true
 
