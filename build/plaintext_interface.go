@@ -2,7 +2,6 @@ package build
 
 import (
 	"fmt"
-	"github.com/moby/buildkit/client"
 	"os"
 	"os/signal"
 	"strings"
@@ -78,16 +77,14 @@ func (iface *plaintextInterface) SucceedJob(service string) {
 	}
 }
 
-func (iface *plaintextInterface) ProcessStatus(service string, status *client.SolveStatus) {
+func (iface *plaintextInterface) ProcessLog(service, logLine string) {
 	job := iface.jobs[service]
 	logs := job.totalJobLogs
-	for _, log := range status.Logs {
-		if job.startTime.IsZero() {
-			job.startTime = log.Timestamp
-		}
-		logs.WriteString(fmt.Sprintf("[t+%.2fs] ", log.Timestamp.Sub(job.startTime).Seconds()))
-		logs.Write(log.Data)
+	if job.startTime.IsZero() {
+		job.startTime = time.Now()
 	}
+	logs.WriteString(fmt.Sprintf("[t+%.2fs] ", time.Now().Sub(job.startTime).Seconds()))
+	logs.WriteString(logLine)
 }
 
 func (iface *plaintextInterface) AddCancelListener(cancelFunc func()) {

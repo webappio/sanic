@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 )
 
 func findServices(path string) ([]string, error) {
@@ -66,7 +67,6 @@ func buildService(
 	serviceDir string,
 	buildkitAddress string,
 	logErrorsChannel chan error,
-	buildInterface build.Interface,
 	buildLogger build.Logger) error {
 
 	serviceName := filepath.Base(serviceDir)
@@ -76,12 +76,11 @@ func buildService(
 	}
 	pipeR, pipeW := io.Pipe()
 
-	buildInterface.StartJob(serviceName)
-
 	statusChannel := make(chan *client.SolveStatus)
 	eg, ctx := errgroup.WithContext(ctx)
 	buildDone := make(chan interface{})
 	eg.Go(func() error {
+		buildLogger.Log(serviceName, time.Now(), "Starting job...")
 		_, err = c.Build(
 			ctx,
 			client.SolveOpt{
@@ -104,9 +103,7 @@ func buildService(
 			statusChannel)
 		pipeR.CloseWithError(err)
 		if err != nil {
-			buildInterface.FailJob(serviceName, err)
-		} else {
-			buildInterface.SucceedJob(serviceName)
+			buildLogger.Log(serviceName, time.Now(), "FAILED: ", err.Error())
 		}
 		return err
 	})
@@ -130,7 +127,6 @@ func buildService(
 				if logErr != nil {
 					logErrorsChannel <- logErr
 				}
-				buildInterface.ProcessStatus(serviceName, status)
 			}
 		}
 	})
@@ -159,6 +155,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 	defer buildInterface.Close()
 
 	buildLogger := build.NewFlatfileLogger(filepath.Join(projectRoot, "logs"))
+	buildLogger.AddLogLineListener(buildInterface.ProcessLog)
 	defer buildLogger.Close()
 
 	jobErrorsChannel := make(chan error)
@@ -166,19 +163,29 @@ func buildCommandAction(cliContext *cli.Context) error {
 	buildingJobs := 0
 
 	for _, serviceDir := range services {
+		serviceName := filepath.Base(serviceDir)
 		ctx, cancelJob := context.WithCancel(context.Background())
 		buildInterface.AddCancelListener(cancelJob)
 
 		finalServiceDir := serviceDir
 
+		buildInterface.StartJob(serviceName)
+		buildLogger.Log(serviceName, time.Now(), "Queued for building.")
 		go func() {
-			jobErrorsChannel <- buildService(
+			jobError := buildService(
 				ctx,
 				finalServiceDir,
 				cliContext.String("buildkit-addr"),
 				logErrorsChannel,
-				buildInterface,
 				buildLogger)
+			if jobError == nil {
+				buildLogger.Log(serviceName, time.Now(), "Build succeeded!")
+				buildInterface.SucceedJob(serviceName)
+			} else {
+				buildInterface.FailJob(serviceName, jobError)
+				buildLogger.Log(serviceName, time.Now(), "Build failed! ", jobError.Error())
+			}
+			jobErrorsChannel <- jobError
 		}()
 		buildingJobs++
 	}

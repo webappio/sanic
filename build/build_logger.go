@@ -6,29 +6,34 @@ import (
 	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 //Logger takes log messages from the buildkit build server(s) and stores them
 type Logger interface {
+	Log(service string, when time.Time, message ... interface{}) error
 	ProcessStatus(service string, status *client.SolveStatus) error
 	Close()
+	AddLogLineListener(func(service, logLine string))
 }
 
 type flatfileLogger struct {
 	LogDirectory string
 
-	openFiles map[string]*os.File
+	openFiles        map[string]*os.File
+	logLineListeners []func(service, logLine string)
 }
 
 //NewFlatfileLogger builds a new Logger which writes text logs to (repository root)/logs/(service name).log
 func NewFlatfileLogger(logDirectory string) Logger {
 	return &flatfileLogger{
-		LogDirectory: logDirectory,
-		openFiles:    make(map[string]*os.File),
+		LogDirectory:     logDirectory,
+		openFiles:        make(map[string]*os.File),
+		logLineListeners: []func(service, logLine string){},
 	}
 }
 
-func (logger *flatfileLogger) ProcessStatus(service string, status *client.SolveStatus) error {
+func (logger *flatfileLogger) Log(service string, when time.Time, message ... interface{}) error {
 	var logFile *os.File
 
 	if existingFile, ok := logger.openFiles[service]; ok {
@@ -49,9 +54,20 @@ func (logger *flatfileLogger) ProcessStatus(service string, status *client.Solve
 		}
 		logger.openFiles[service] = logFile
 	}
+	messageString := fmt.Sprint(message...)
+	_, err := logFile.WriteString(fmt.Sprintf("[%s] %s\n", when, messageString))
+	for _, listener := range logger.logLineListeners {
+		listener(service, messageString)
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (logger *flatfileLogger) ProcessStatus(service string, status *client.SolveStatus) error {
 	for _, log := range status.Logs {
-		logFile.WriteString(fmt.Sprintf("[%s] ", log.Timestamp))
-		_, err := logFile.Write(log.Data)
+		err := logger.Log(service, log.Timestamp, string(log.Data))
 		if err != nil {
 			return errors.Errorf(
 				"Could not write to %s's logs: %s",
@@ -66,4 +82,8 @@ func (logger *flatfileLogger) Close() {
 	for _, f := range logger.openFiles {
 		f.Close()
 	}
+}
+
+func (logger *flatfileLogger) AddLogLineListener(processLog func(service, logLine string)) {
+	logger.logLineListeners = append(logger.logLineListeners, processLog)
 }

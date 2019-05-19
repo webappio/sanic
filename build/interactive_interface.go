@@ -2,7 +2,6 @@ package build
 
 import (
 	"github.com/gdamore/tcell"
-	"github.com/moby/buildkit/client"
 	"sort"
 	"strings"
 	"time"
@@ -167,17 +166,16 @@ func (iface *interactiveInterface) SucceedJob(service string) {
 	}
 }
 
-func (iface *interactiveInterface) ProcessStatus(service string, status *client.SolveStatus) {
-	job := iface.jobs[service]
-	for _, log := range status.Logs {
-		for _, logLine := range strings.Split(string(log.Data), "\n") {
-			logLine = strings.TrimSpace(logLine)
-			if logLine != "" {
-				job.lastNonemptyLog = logLine
-				//notice: server time might drift, so we use local time
-				job.lastNonemptyLogTime = time.Now()
-			}
-		}
+func (iface *interactiveInterface) ProcessLog(service, logLine string) {
+	job, ok := iface.jobs[service]
+	if !ok {
+		panic("Could not find service: "+service)
+	}
+	logLine = strings.TrimSpace(logLine)
+	if logLine != "" {
+		job.lastNonemptyLog = logLine
+		//notice: server time might drift, so we use local time
+		job.lastNonemptyLogTime = time.Now()
 	}
 }
 
