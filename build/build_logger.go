@@ -57,7 +57,7 @@ func (logger *flatfileLogger) Log(service string, when time.Time, message ...int
 	messageString := fmt.Sprint(message...)
 	_, err := logFile.WriteString(fmt.Sprintf("[%s] %s\n", when, messageString))
 	for _, listener := range logger.logLineListeners {
-		listener(service, messageString)
+		listener(service, messageString+"\n")
 	}
 	if err != nil {
 		return err
@@ -67,7 +67,11 @@ func (logger *flatfileLogger) Log(service string, when time.Time, message ...int
 
 func (logger *flatfileLogger) ProcessStatus(service string, status *client.SolveStatus) error {
 	for _, log := range status.Logs {
-		err := logger.Log(service, log.Timestamp, string(log.Data))
+		logMessage := []rune(string(log.Data))
+		if logMessage[len(logMessage)-1] == '\n' {
+			logMessage = logMessage[:len(logMessage)-1]
+		}
+		err := logger.Log(service, log.Timestamp, string(logMessage))
 		if err != nil {
 			return errors.Errorf(
 				"Could not write to %s's logs: %s",

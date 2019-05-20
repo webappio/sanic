@@ -79,7 +79,7 @@ func (iface *plaintextInterface) SucceedJob(service string) {
 
 func (iface *plaintextInterface) ProcessLog(service, logLine string) {
 	job := iface.jobs[service]
-	logs := job.totalJobLogs
+	logs := &job.totalJobLogs
 	if job.startTime.IsZero() {
 		job.startTime = time.Now()
 	}
