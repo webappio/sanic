@@ -5,8 +5,35 @@ import (
 	"github.com/distributed-containers-inc/sanic/config"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/urfave/cli"
+	"os"
+	"path/filepath"
 	"strings"
 )
+
+//SanicConfigName is the name of the configuration file to read.
+//It also functions as denoting the root directory of the monorepo.
+//sanic env searches for this to allow you to enter environments easily.
+const SanicConfigName = "sanic.yaml"
+
+func findSanicConfig() (configPath string, err error) {
+	currPath, err := filepath.Abs(".")
+	if err != nil {
+		return "", nil
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(currPath, SanicConfigName)); err == nil {
+			return filepath.Abs(filepath.Join(currPath, SanicConfigName))
+		}
+		newPath, err := filepath.Abs(filepath.Join(currPath, ".."))
+		if err != nil {
+			return "", err
+		}
+		if newPath == currPath {
+			return "", nil
+		}
+		currPath = newPath
+	}
+}
 
 func environmentCommandAction(c *cli.Context) error {
 	if c.NArg() == 0 {
@@ -14,22 +41,35 @@ func environmentCommandAction(c *cli.Context) error {
 	}
 
 	sanicEnv := c.Args().First()
-	sanicConfig, err := findSanicConfig()
+	configPath, err := findSanicConfig()
 	if err != nil {
 		return wrapErrorWithExitCode(err, 1)
 	}
-	if sanicConfig == "" {
+	if configPath == "" {
 		return cli.NewExitError(fmt.Sprintf("this command requires a %s file in your current dirctory or a parent directory.", SanicConfigName), 1)
+	}
+	sanicRoot := filepath.Base(configPath)
+	s, err := shell.New(sanicRoot, configPath, sanicEnv)
+	if err != nil {
+		return wrapErrorWithExitCode(err, 1)
+	}
+
+	cfg, err := config.ReadFromPath(configPath)
+	if err != nil {
+		return wrapErrorWithExitCode(err, 1)
+	}
+	_, err = cfg.CurrentEnvironment(s)
+	if err != nil {
+		return wrapErrorWithExitCode(err, 1)
 	}
 
 	if c.NArg() == 1 {
 		//sanic env dev
-		return wrapErrorWithExitCode(
-			shell.Enter(sanicEnv, sanicConfig),
-			1)
+		//if this returns, there's been an error (we execp here)
+		return wrapErrorWithExitCode(s.Enter(), 1)
 	}
 	//sanic env dev echo hello
-	errorCode, err := shell.EnterExec(sanicEnv, sanicConfig, c.Args()[1:])
+	errorCode, err := s.Exec(c.Args()[1:])
 	if err != nil {
 		return wrapErrorWithExitCode(err, errorCode)
 	}

@@ -11,10 +11,9 @@ func runCommandAction(c *cli.Context) error {
 		return newUsageError(c)
 	}
 
-	sanicEnv := getSanicEnv()
-	configPath := getSanicConfigPath()
-	if sanicEnv == "" || configPath == "" {
-		return cli.NewExitError("you must be in an environment to use this command. see sanic env", 1)
+	s, err := shell.Current()
+	if err != nil {
+		return wrapErrorWithExitCode(err, 1)
 	}
 
 	cfg, err := config.Read()
@@ -22,7 +21,7 @@ func runCommandAction(c *cli.Context) error {
 		return wrapErrorWithExitCode(err, 1)
 	}
 
-	env, err := config.CurrentEnvironment(cfg)
+	env, err := cfg.CurrentEnvironment(s)
 	if err != nil {
 		return wrapErrorWithExitCode(err, 1)
 	}
@@ -30,14 +29,14 @@ func runCommandAction(c *cli.Context) error {
 	commandName := c.Args().First()
 	for _, command := range env.Commands {
 		if command.Name == commandName {
-			code, err := shell.Exec(sanicEnv, configPath, command.Command)
+			code, err := s.ShellExec(command.Command)
 			if code == 0 {
 				return nil
 			}
 			return wrapErrorWithExitCode(err, code)
 		}
 	}
-	return cli.NewExitError("Command "+commandName+" was not found in environment "+sanicEnv+".", 1)
+	return cli.NewExitError("Command "+commandName+" was not found in environment "+s.GetSanicEnvironment(), 1)
 
 }
 

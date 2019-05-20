@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/build"
+	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/moby/buildkit/client"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	"github.com/urfave/cli"
@@ -142,11 +143,12 @@ func buildService(
 //adapted from
 //https://web.archive.org/web/20190516153923/https://raw.githubusercontent.com/moby/buildkit/master/examples/build-using-dockerfile/main.go
 func buildCommandAction(cliContext *cli.Context) error {
-	projectRoot := getProjectRootPath()
-	if projectRoot == "" {
-		return cli.NewExitError("you must be in an environment to build, see 'sanic env'", 1)
+	s, err := shell.Current()
+	if err != nil {
+		return wrapErrorWithExitCode(err, 1)
 	}
-	services, err := findServices(projectRoot)
+
+	services, err := findServices(s.GetSanicRoot())
 	if err != nil {
 		return wrapErrorWithExitCode(err, 1)
 	}
@@ -154,7 +156,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 	buildInterface := createBuildInterface(cliContext.Bool("plain-interface"))
 	defer buildInterface.Close()
 
-	buildLogger := build.NewFlatfileLogger(filepath.Join(projectRoot, "logs"))
+	buildLogger := build.NewFlatfileLogger(filepath.Join(s.GetSanicRoot(), "logs"))
 	buildLogger.AddLogLineListener(buildInterface.ProcessLog)
 	defer buildLogger.Close()
 

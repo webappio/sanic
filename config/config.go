@@ -2,9 +2,11 @@ package config
 
 import (
 	"errors"
+	"github.com/distributed-containers-inc/sanic/shell"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 //Command is a configuration structure which consists of a name (e.g., print_hello) and a command (e.g., "echo hello")
@@ -41,7 +43,7 @@ func ReadFromPath(configPath string) (*SanicConfig, error) {
 
 //Read returns a new SanicConfig, given that the environment (e.g., sanic env) has one configured
 func Read() (*SanicConfig, error) {
-	configPath := os.Getenv("SANIC_CONFIG")
+	configPath := os.Getenv("SANIC_CONFIG") //TODO shouldn't be reading env vars here
 	if configPath == "" {
 		return nil, errors.New("enter an environment with 'sanic env'")
 	}
@@ -51,13 +53,9 @@ func Read() (*SanicConfig, error) {
 
 //CurrentEnvironment returns an Environment struct corresponding to the environment the user is in.
 //Fails if the user is not in an environment
-func CurrentEnvironment(cfg *SanicConfig) (*Environment, error) {
-	sanicEnv := os.Getenv("SANIC_ENV")
-	if sanicEnv == "" {
-		return nil, errors.New("enter an environment with 'sanic env'")
-	}
-	if ret, exists := cfg.Environments[sanicEnv]; exists {
+func (cfg *SanicConfig) CurrentEnvironment(s shell.Shell) (*Environment, error) {
+	if ret, exists := cfg.Environments[s.GetSanicEnvironment()]; exists {
 		return &ret, nil
 	}
-	return nil, errors.New("the environment you are you does not exist, ensure it was not removed from the configuration")
+	return nil, errors.New("the environment " + s.GetSanicEnvironment() + " does not exist in the project '" + filepath.Base(s.GetSanicRoot()) + `'`)
 }
