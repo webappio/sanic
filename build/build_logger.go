@@ -55,7 +55,7 @@ func (logger *flatfileLogger) Log(service string, when time.Time, message ...int
 		logger.openFiles[service] = logFile
 	}
 	messageString := fmt.Sprint(message...)
-	_, err := logFile.WriteString(fmt.Sprintf("[%s] %s\n", when, messageString))
+	_, err := logFile.WriteString(fmt.Sprintf("[%s] %s\n", when.In(time.Local), messageString))
 	for _, listener := range logger.logLineListeners {
 		listener(service, messageString+"\n")
 	}
