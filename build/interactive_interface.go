@@ -1,6 +1,7 @@
 package build
 
 import (
+	"fmt"
 	"github.com/gdamore/tcell"
 	"sort"
 	"strings"
@@ -148,6 +149,12 @@ func (iface interactiveInterface) redrawScreen() {
 func (iface *interactiveInterface) Close() {
 	iface.running = false
 	iface.screen.Fini()
+	var serviceNames []string
+	for job := range iface.jobs {
+		serviceNames = append(serviceNames, job)
+	}
+
+	fmt.Printf("Successfully built: %s\n", strings.Join(serviceNames, ", "))
 }
 
 func (iface *interactiveInterface) StartJob(service string) {
@@ -169,7 +176,7 @@ func (iface *interactiveInterface) SucceedJob(service string) {
 func (iface *interactiveInterface) ProcessLog(service, logLine string) {
 	job, ok := iface.jobs[service]
 	if !ok {
-		panic("Could not find service: "+service)
+		panic("Could not find service: " + service)
 	}
 	logLine = strings.TrimSpace(logLine)
 	if logLine != "" {
