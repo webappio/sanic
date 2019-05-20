@@ -44,6 +44,9 @@ func environmentCommandAction(c *cli.Context) error {
 
 	createNewShell := false
 	s, err := shell.Current()
+	if s != nil && err != nil {
+		return wrapErrorWithExitCode(err, 1)
+	}
 	if s == nil {
 		createNewShell = true
 		configPath, err := findSanicConfig()
@@ -73,13 +76,12 @@ func environmentCommandAction(c *cli.Context) error {
 		//sanic env dev
 		if createNewShell {
 			return wrapErrorWithExitCode(s.Enter(), 1)
-		} else {
-			err := s.ChangeEnvironment(newSanicEnv)
-			if err != nil {
-				return wrapErrorWithExitCode(err, 1)
-			}
-			return nil
 		}
+		err := s.ChangeEnvironment(newSanicEnv)
+		if err != nil {
+			return wrapErrorWithExitCode(err, 1)
+		}
+		return nil
 	}
 	//sanic env dev echo hello
 	errorCode, err := s.Exec(c.Args()[1:])

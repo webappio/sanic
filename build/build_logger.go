@@ -11,7 +11,7 @@ import (
 
 //Logger takes log messages from the buildkit build server(s) and stores them
 type Logger interface {
-	Log(service string, when time.Time, message ... interface{}) error
+	Log(service string, when time.Time, message ...interface{}) error
 	ProcessStatus(service string, status *client.SolveStatus) error
 	Close()
 	AddLogLineListener(func(service, logLine string))
@@ -33,7 +33,7 @@ func NewFlatfileLogger(logDirectory string) Logger {
 	}
 }
 
-func (logger *flatfileLogger) Log(service string, when time.Time, message ... interface{}) error {
+func (logger *flatfileLogger) Log(service string, when time.Time, message ...interface{}) error {
 	var logFile *os.File
 
 	if existingFile, ok := logger.openFiles[service]; ok {
