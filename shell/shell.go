@@ -29,6 +29,9 @@ type Shell interface {
 
 	//return absolute path to the current shell's sanic project's config
 	GetSanicConfig() string
+
+	//must already be in an environment, this changes the current shell's environment to a new one
+	ChangeEnvironment(sanicEnvironment string) error
 }
 
 //Current gets the current shell (or an error if sanic env has not been used)

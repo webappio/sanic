@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -18,6 +19,20 @@ type BashShell struct {
 	sanicEnvironment string //name of the environment we are in
 }
 
+func (shell *BashShell) writeEnvFile(envFile *os.File) error {
+	for _, env := range extraShellEnvironmentVars(shell) {
+		_, err := envFile.WriteString(env)
+		if err != nil {
+			return err
+		}
+		_, err = envFile.WriteString("\n")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 //Enter : execvp the current process into a new sanic shell. Note: Does not return.
 func (shell *BashShell) Enter() error {
 	tmpl, err := template.New("rcfile").Parse(
@@ -31,11 +46,16 @@ if [ -z "${OLD_PS1+x}" ]; then
   OLD_PS1="$PS1"
 fi
 
-# delete this file when this shell exits
-trap 'rm {{.RCFile}}' INT TERM EXIT
+export SANIC_BASH_ENV_FILE='{{.EnvFile}}'
+set -a # export the loaded variables
+source "${SANIC_BASH_ENV_FILE}"
+set +a
 
-{{range $Var := .ExtraEnvironmentVars}}export {{$Var}}
-{{end}}
+# delete this file when this shell exits
+trap 'rm {{.RCFile}}; rm {{.EnvFile}}' INT TERM EXIT
+
+# reload any environment changes before every command
+trap 'set -a; source "${SANIC_BASH_ENV_FILE}"; set +a' DEBUG
 
 # 1. save exit status of last command (e.g., in case they change prompt color)
 # 2. save old PS1 (e.g., in case they don't set PS1, we don't want it to keep appending [dev]
@@ -45,8 +65,8 @@ PROMPT_COMMAND='status=$?; PS1="$OLD_PS1"; ( exit $status; ); '"$OLD_PROMPT_COMM
 `)
 
 	type TemplateData struct {
-		RCFile               string
-		ExtraEnvironmentVars []string
+		RCFile  string
+		EnvFile string
 	}
 
 	if err != nil {
@@ -54,19 +74,26 @@ PROMPT_COMMAND='status=$?; PS1="$OLD_PS1"; ( exit $status; ); '"$OLD_PROMPT_COMM
 	}
 
 	rcFile, err := ioutil.TempFile("", "sanic-rcfile-*.bash")
+	defer rcFile.Close()
 
 	if err != nil {
 		return err
 	}
 
+	sanicEnvFile, err := ioutil.TempFile("", "sanic-env-*.env")
+	defer sanicEnvFile.Close()
+	if err != nil {
+		return err
+	}
+	shell.writeEnvFile(sanicEnvFile)
+
 	err = tmpl.Execute(rcFile, TemplateData{
-		RCFile:               rcFile.Name(),
-		ExtraEnvironmentVars: extraShellEnvironmentVars(shell),
+		RCFile:  rcFile.Name(),
+		EnvFile: sanicEnvFile.Name(),
 	})
 	if err != nil {
 		return err
 	}
-	rcFile.Close()
 
 	return syscall.Exec(
 		shell.Path,
@@ -148,4 +175,23 @@ func (shell *BashShell) GetSanicConfig() string {
 //GetSanicRoot returns the current path to the project root directory
 func (shell *BashShell) GetSanicRoot() string {
 	return shell.sanicRoot
+}
+
+func (shell *BashShell) ChangeEnvironment(sanicEnvironment string) error {
+	envFile := os.Getenv("SANIC_BASH_ENV_FILE")
+	if envFile == "" {
+		return errors.New("the environment file variable is not set")
+	}
+	f, err := os.OpenFile(envFile, os.O_WRONLY|os.O_CREATE, 0)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+	oldEnv := sanicEnvironment
+	shell.sanicEnvironment = sanicEnvironment
+	err = shell.writeEnvFile(f)
+	if err != nil {
+		shell.sanicEnvironment = oldEnv
+	}
+	return err
 }
