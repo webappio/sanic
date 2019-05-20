@@ -51,6 +51,11 @@ func Read() (*SanicConfig, error) {
 	return ReadFromPath(configPath)
 }
 
+func (cfg *SanicConfig) HasEnvironment(env string) bool {
+	_, exists := cfg.Environments[env]
+	return exists
+}
+
 //CurrentEnvironment returns an Environment struct corresponding to the environment the user is in.
 //Fails if the user is not in an environment
 func (cfg *SanicConfig) CurrentEnvironment(s shell.Shell) (*Environment, error) {

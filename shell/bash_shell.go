@@ -187,7 +187,7 @@ func (shell *BashShell) ChangeEnvironment(sanicEnvironment string) error {
 	if err != nil {
 		return err
 	}
-	oldEnv := sanicEnvironment
+	oldEnv := shell.sanicEnvironment
 	shell.sanicEnvironment = sanicEnvironment
 	err = shell.writeEnvFile(f)
 	if err != nil {

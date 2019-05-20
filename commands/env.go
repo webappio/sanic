@@ -56,7 +56,7 @@ func environmentCommandAction(c *cli.Context) error {
 		if configPath == "" {
 			return cli.NewExitError(fmt.Sprintf("this command requires a %s file in your current dirctory or a parent directory.", SanicConfigName), 1)
 		}
-		sanicRoot := filepath.Base(configPath)
+		sanicRoot := filepath.Dir(configPath)
 		s, err = shell.New(sanicRoot, configPath, newSanicEnv)
 		if err != nil {
 			return wrapErrorWithExitCode(err, 1)
@@ -67,9 +67,10 @@ func environmentCommandAction(c *cli.Context) error {
 		return wrapErrorWithExitCode(err, 1)
 	}
 
-	_, err = cfg.CurrentEnvironment(s)
-	if err != nil {
-		return wrapErrorWithExitCode(err, 1)
+	if !cfg.HasEnvironment(newSanicEnv) {
+		return cli.NewExitError(fmt.Sprintf(
+			"environment %s does not exist in project %s", newSanicEnv, filepath.Base(s.GetSanicRoot())),
+			1)
 	}
 
 	if c.NArg() == 1 {
@@ -119,7 +120,7 @@ func environmentCommandAutocomplete(c *cli.Context) {
 		print(possibleEnvs[0])
 	}
 	for env := range possibleEnvs {
-		println(env)
+		fmt.Println(env)
 	}
 }
 
