@@ -2,6 +2,7 @@ package shell
 
 import (
 	"io/ioutil"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"text/template"
@@ -9,16 +10,25 @@ import (
 
 //BashShell returns a new "wrapped" bash-based shell, which has the correct environment variables and prompt
 var BashShell = Shell{
-	EnterArgs: func(sanicEnv string) (arguments []string) {
+	EnterArgs: func(sanicEnv, configPath string) (arguments []string) {
 		tmpl, err := template.New("rcfile").Parse(
 			`
 source ~/.bashrc
 
 if [ -z "${OLD_PROMPT_COMMAND+x}" ]; then
   OLD_PROMPT_COMMAND="$PROMPT_COMMAND"
-  OLD_PS1="$PS1"
-  export SANIC_ENV='{{.Environment}}'
 fi
+if [ -z "${OLD_PS1+x}" ]; then
+  OLD_PS1="$PS1"
+fi
+
+# delete this file when this shell exits
+trap 'rm {{.RCFile}}' INT TERM EXIT
+
+export SANIC_ENV='{{.Environment}}'
+export SANIC_ROOT='{{.Root}}'
+export SANIC_CONFIG='{{.ConfigPath}}'
+
 # 1. save exit status of last command (e.g., in case they change prompt color)
 # 2. save old PS1 (e.g., in case they don't set PS1, we don't want it to keep appending [dev]
 # 3. run their prompt command (if any)
@@ -28,6 +38,9 @@ PROMPT_COMMAND='status=$?; PS1="$OLD_PS1"; ( exit $status; ); '"$OLD_PROMPT_COMM
 
 		type TemplateData struct {
 			Environment string
+			RCFile      string
+			Root        string
+			ConfigPath  string
 		}
 
 		if err != nil {
@@ -40,7 +53,12 @@ PROMPT_COMMAND='status=$?; PS1="$OLD_PS1"; ( exit $status; ); '"$OLD_PROMPT_COMM
 			panic(err)
 		}
 
-		err = tmpl.Execute(rcFile, TemplateData{Environment: sanicEnv})
+		err = tmpl.Execute(rcFile, TemplateData{
+			Environment: sanicEnv,
+			RCFile:      rcFile.Name(),
+			Root:        filepath.Dir(configPath),
+			ConfigPath:  configPath,
+		})
 		if err != nil {
 			panic(err)
 		}

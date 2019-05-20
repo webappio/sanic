@@ -44,7 +44,7 @@ func EnvironmentVariables(sanicEnv, configPath string) []string {
 type Shell struct {
 	//Return the arguments to run an interactive version of a specific shell
 	//e.g., if executable is /bin/bash, this might return --rcfile /tmp/blah.bash
-	EnterArgs func(sanicEnv string) (arguments []string)
+	EnterArgs func(sanicEnv, configPath string) (arguments []string)
 
 	//Return the arguments to run the given shell contents in a
 	// "one-shot" version of this specific shell, preserving arguments
@@ -74,7 +74,8 @@ func Enter(sanicEnv, configPath string) error {
 		return err
 	}
 	argv := []string{shellPath}
-	argv = append(argv, shell.EnterArgs(sanicEnv)...)
+	argv = append(argv, shell.EnterArgs(sanicEnv, configPath)...)
+
 	return syscall.Exec(
 		shellPath,
 		argv,
