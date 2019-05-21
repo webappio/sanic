@@ -48,10 +48,11 @@ func (logger *flatfileLogger) Log(service string, when time.Time, message ...int
 		}
 		logFile, err = os.OpenFile(
 			filepath.Join(logger.LogDirectory, service+".log"),
-			os.O_WRONLY|os.O_CREATE, 0600)
+			os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
 			return err
 		}
+		logFile.WriteString("") //wipe old logs
 		logger.openFiles[service] = logFile
 	}
 	messageString := fmt.Sprint(message...)
