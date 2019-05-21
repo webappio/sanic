@@ -81,7 +81,7 @@ func buildService(
 	eg, ctx := errgroup.WithContext(ctx)
 	buildDone := make(chan interface{})
 	eg.Go(func() error {
-		buildLogger.Log(serviceName, time.Now(), "Starting build...")
+		buildLogger.Log(serviceName, time.Now(), "Starting build of ", serviceDir)
 		_, err = c.Build(
 			ctx,
 			client.SolveOpt{

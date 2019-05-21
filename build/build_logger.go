@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -67,6 +68,12 @@ func (logger *flatfileLogger) Log(service string, when time.Time, message ...int
 }
 
 func (logger *flatfileLogger) ProcessStatus(service string, status *client.SolveStatus) error {
+	for _, v := range status.Vertexes { //e.g., [6/6] ADD app.py ./
+		if strings.Index(v.Name, "[internal]") != 0 { //TODO HACK these are annoying
+			logger.Log(service, time.Now(), v.Name)
+		}
+	}
+
 	for _, log := range status.Logs {
 		logMessage := []rune(string(log.Data))
 		if logMessage[len(logMessage)-1] == '\n' {

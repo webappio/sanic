@@ -51,6 +51,7 @@ func Read() (*SanicConfig, error) {
 	return ReadFromPath(configPath)
 }
 
+//HasEnvironment returns the configuration has a given environment defined
 func (cfg *SanicConfig) HasEnvironment(env string) bool {
 	_, exists := cfg.Environments[env]
 	return exists
