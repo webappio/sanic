@@ -1,6 +1,7 @@
 package build
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -53,8 +54,10 @@ func (iface *plaintextInterface) StartJob(service string) {
 func (iface *plaintextInterface) FailJob(service string, err error) {
 	if job, ok := iface.jobs[service]; ok {
 		logs := job.totalJobLogs.String()
-		if logs != "" {
-			fmt.Printf("[%s] JOB FAILED: %s", service, err.Error())
+		if err == context.Canceled {
+			//do nothing: job was cancelled
+		} else if logs != "" {
+			fmt.Printf("[%s] JOB FAILED: %s\n", service, err.Error())
 			fmt.Printf("[%s] LOGS FOR FAILED SERVICE:\n", service)
 			fmt.Print(logs)
 			fmt.Printf("[%s] END FAILURE LOGS \n\n", service)
