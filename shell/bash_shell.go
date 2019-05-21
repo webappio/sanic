@@ -52,7 +52,7 @@ source "${SANIC_BASH_ENV_FILE}"
 set +a
 
 # delete this file when this shell exits
-trap 'rm {{.RCFile}}; rm {{.EnvFile}}' INT TERM EXIT
+trap 'rm {{.RCFile}}; rm {{.EnvFile}}' EXIT
 
 # reload any environment changes before every command
 trap 'set -a; source "${SANIC_BASH_ENV_FILE}"; set +a' DEBUG
@@ -177,6 +177,7 @@ func (shell *BashShell) GetSanicRoot() string {
 	return shell.sanicRoot
 }
 
+//ChangeEnvironment changes the currently entered shell's sanic environment to a new one
 func (shell *BashShell) ChangeEnvironment(sanicEnvironment string) error {
 	envFile := os.Getenv("SANIC_BASH_ENV_FILE")
 	if envFile == "" {
