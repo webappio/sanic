@@ -105,11 +105,11 @@ func environmentCommandAutocomplete(c *cli.Context) {
 		return
 	}
 	configData, err := config.ReadFromPath(configPath)
-	if err != nil || configData == nil {
+	if err != nil {
 		return
 	}
 
-	var possibleEnvs = []string{}
+	var possibleEnvs []string
 
 	for key := range configData.Environments {
 		if strings.HasPrefix(key, requestedEnv) {

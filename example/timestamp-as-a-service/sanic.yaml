@@ -7,5 +7,6 @@ environments:
     commands:
     - name: print_dev
       command: echo 'in dev!' 2 3 4
+    clusterProvisioner: localdev
   prod:
     commands: []

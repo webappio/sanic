@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -18,6 +19,10 @@ type Command struct {
 //Environment is a specific environment which can be entered with "sanic env"
 type Environment struct {
 	Commands []Command
+	//Provisioner can be one of:
+	// - localdev, a kubernetes-in-docker environment suitable for local development, using "kind"
+	// - TODO prod environment docs
+	ClusterProvisioner string
 }
 
 //SanicConfig is the global structure of entries in sanic.yaml
@@ -26,26 +31,34 @@ type SanicConfig struct {
 }
 
 //ReadFromPath returns a new SanicConfig from the given filesystem path to a yaml file
-func ReadFromPath(configPath string) (*SanicConfig, error) {
+func ReadFromPath(configPath string) (SanicConfig, error) {
 	data, err := ioutil.ReadFile(configPath)
 	if err != nil {
-		return nil, errors.New("configuration file could not be read: " + err.Error())
+		return SanicConfig{}, errors.New("configuration file could not be read: " + err.Error())
 	}
 
-	ret := new(SanicConfig)
-	err = yaml.UnmarshalStrict(data, ret)
+	cfg := SanicConfig{}
+	err = yaml.Unmarshal(data, &cfg)
 	if err != nil {
-		return nil, errors.New("configuration file error: " + err.Error())
+		return SanicConfig{}, errors.New("configuration file error: " + err.Error())
+	}
+	for envName, env := range cfg.Environments {
+		if env.ClusterProvisioner != "localdev" && env.ClusterProvisioner != "" {
+			return SanicConfig{}, errors.New(fmt.Sprintf(
+				"configuration file error: environment %s's" +
+					" clusterProvisioner key must be one of 'localdev' or omitted, was: '%s'",
+				envName, env.ClusterProvisioner))
+		}
 	}
 
-	return ret, nil
+	return cfg, nil
 }
 
 //Read returns a new SanicConfig, given that the environment (e.g., sanic env) has one configured
-func Read() (*SanicConfig, error) {
+func Read() (SanicConfig, error) {
 	configPath := os.Getenv("SANIC_CONFIG") //TODO shouldn't be reading env vars here
 	if configPath == "" {
-		return nil, errors.New("enter an environment with 'sanic env'")
+		return SanicConfig{}, errors.New("enter an environment with 'sanic env'")
 	}
 
 	return ReadFromPath(configPath)
