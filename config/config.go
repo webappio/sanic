@@ -22,7 +22,7 @@ type Environment struct {
 	//Provisioner can be one of:
 	// - localdev, a kubernetes-in-docker environment suitable for local development, using "kind"
 	// - TODO prod environment docs
-	ClusterProvisioner string
+	ClusterProvisioner string `yaml:"clusterProvisioner"`
 }
 
 //SanicConfig is the global structure of entries in sanic.yaml
@@ -45,7 +45,7 @@ func ReadFromPath(configPath string) (SanicConfig, error) {
 	for envName, env := range cfg.Environments {
 		if env.ClusterProvisioner != "localdev" && env.ClusterProvisioner != "" {
 			return SanicConfig{}, errors.New(fmt.Sprintf(
-				"configuration file error: environment %s's" +
+				"configuration file error: environment %s's"+
 					" clusterProvisioner key must be one of 'localdev' or omitted, was: '%s'",
 				envName, env.ClusterProvisioner))
 		}

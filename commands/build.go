@@ -145,12 +145,12 @@ func buildService(
 func buildCommandAction(cliContext *cli.Context) error {
 	s, err := shell.Current()
 	if err != nil {
-		return wrapErrorWithExitCode(err, 1)
+		return cli.NewExitError(err.Error(), 1)
 	}
 
 	services, err := findServices(s.GetSanicRoot())
 	if err != nil {
-		return wrapErrorWithExitCode(err, 1)
+		return cli.NewExitError(err.Error(), 1)
 	}
 
 	buildInterface := createBuildInterface(cliContext.Bool("plain-interface"))

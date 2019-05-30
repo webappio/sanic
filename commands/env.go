@@ -45,13 +45,13 @@ func environmentCommandAction(c *cli.Context) error {
 	createNewShell := false
 	s, err := shell.Current()
 	if s != nil && err != nil {
-		return wrapErrorWithExitCode(err, 1)
+		return cli.NewExitError(err.Error(), 1)
 	}
 	if s == nil {
 		createNewShell = true
 		configPath, err := findSanicConfig()
 		if err != nil {
-			return wrapErrorWithExitCode(err, 1)
+			return cli.NewExitError(err.Error(), 1)
 		}
 		if configPath == "" {
 			return cli.NewExitError(fmt.Sprintf("this command requires a %s file in your current dirctory or a parent directory.", SanicConfigName), 1)
@@ -59,12 +59,12 @@ func environmentCommandAction(c *cli.Context) error {
 		sanicRoot := filepath.Dir(configPath)
 		s, err = shell.New(sanicRoot, configPath, newSanicEnv)
 		if err != nil {
-			return wrapErrorWithExitCode(err, 1)
+			return cli.NewExitError(err.Error(), 1)
 		}
 	}
 	cfg, err := config.ReadFromPath(s.GetSanicConfig())
 	if err != nil {
-		return wrapErrorWithExitCode(err, 1)
+		return cli.NewExitError(err.Error(), 1)
 	}
 
 	if !cfg.HasEnvironment(newSanicEnv) {
@@ -76,18 +76,18 @@ func environmentCommandAction(c *cli.Context) error {
 	if c.NArg() == 1 {
 		//sanic env dev
 		if createNewShell {
-			return wrapErrorWithExitCode(s.Enter(), 1)
+			return cli.NewExitError(s.Enter(), 1)
 		}
 		err := s.ChangeEnvironment(newSanicEnv)
 		if err != nil {
-			return wrapErrorWithExitCode(err, 1)
+			return cli.NewExitError(err.Error(), 1)
 		}
 		return nil
 	}
 	//sanic env dev echo hello
 	errorCode, err := s.Exec(c.Args()[1:])
 	if err != nil {
-		return wrapErrorWithExitCode(err, errorCode)
+		return cli.NewExitError(err.Error(), errorCode)
 	}
 	return nil
 }

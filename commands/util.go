@@ -15,7 +15,3 @@ func newUsageError(ctx *cli.Context) error {
 		ctx.Command.HelpName, argsUsage),
 		1)
 }
-
-func wrapErrorWithExitCode(err error, exitCode int) *cli.ExitError {
-	return cli.NewExitError(err.Error(), exitCode)
-}

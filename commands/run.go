@@ -13,17 +13,17 @@ func runCommandAction(c *cli.Context) error {
 
 	s, err := shell.Current()
 	if err != nil {
-		return wrapErrorWithExitCode(err, 1)
+		return cli.NewExitError(err.Error(), 1)
 	}
 
 	cfg, err := config.Read()
 	if err != nil {
-		return wrapErrorWithExitCode(err, 1)
+		return cli.NewExitError(err.Error(), 1)
 	}
 
 	env, err := cfg.CurrentEnvironment(s)
 	if err != nil {
-		return wrapErrorWithExitCode(err, 1)
+		return cli.NewExitError(err.Error(), 1)
 	}
 
 	commandName := c.Args().First()
@@ -33,7 +33,7 @@ func runCommandAction(c *cli.Context) error {
 			if code == 0 {
 				return nil
 			}
-			return wrapErrorWithExitCode(err, code)
+			return cli.NewExitError(err.Error(), code)
 		}
 	}
 	return cli.NewExitError("Command "+commandName+" was not found in environment "+s.GetSanicEnvironment(), 1)
