@@ -7,5 +7,6 @@ var Commands = []cli.Command{
 	buildCommand,
 	deployCommand,
 	environmentCommand,
+	kubectlCommand,
 	runCommand,
 }

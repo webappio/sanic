@@ -22,6 +22,8 @@ import (
 //within docker itself.
 type ProvisionerLocalDev struct{}
 
+var kindContext = cluster.NewContext("sanic")
+
 func kubeNodeReady(node corev1.Node) bool {
 	ready := false
 
@@ -75,7 +77,7 @@ func checkCluster(dockerCli *client.Client, kube *kubernetes.Clientset) error {
 	}
 	for _, node := range nodes.Items {
 		if !kubeNodeReady(node) {
-			return fmt.Errorf("a node was not ready.\nTo note: after deploying initially, "+
+			return fmt.Errorf("a node was not ready.\nTo note: after deploying initially, " +
 				"wait at least 30 seconds before deploying again to let the cluster start fully")
 		}
 	}
@@ -93,21 +95,23 @@ func deleteClusterContainers(dockerCli *client.Client) error {
 		return err
 	}
 	for _, container := range clusterContainers {
-		if err = dockerCli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{Force:true}); err != nil {
+		if err = dockerCli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{Force: true}); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
-	kindContext := cluster.NewContext("sanic")
+func (provisioner *ProvisionerLocalDev) KubeConfigLocation() string {
+	return kindContext.KubeConfigPath()
+}
 
+func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.24"))
 	if err != nil {
 		return fmt.Errorf("could not connect to docker successfully. version 1.12.1 or higher is required.\n, %s", err.Error())
 	}
-	kubeConfig, err := kubeclientcmd.BuildConfigFromFlags("", kindContext.KubeConfigPath())
+	kubeConfig, err := kubeclientcmd.BuildConfigFromFlags("", provisioner.KubeConfigLocation())
 	var clusterError error
 	if err != nil {
 		clusterError = fmt.Errorf("kind config did not exist, cluster has not been initialized")

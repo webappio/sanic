@@ -11,32 +11,36 @@ type Provisioner interface {
 	//EnsureCluster checks if the cluster exists and is configured correctly. Otherwise, it prompts the user
 	//with instructions on how to set up the cluster.
 	EnsureCluster() error
+
+	//GetKubeConfig returns where the absolute path to where the configuration file is placed for this provisioner
+	//Note: it might not necessarily exist
+	KubeConfigLocation() string
 }
 
 var Provisioners = map[string]Provisioner{
 	"localdev": &ProvisionerLocalDev{},
 }
 
-func EnsureCluster() error {
+func GetProvisioner() (Provisioner, error) {
 	s, err := shell.Current()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	cfg, err := config.Read()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	env, err := cfg.CurrentEnvironment(s)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if env.ClusterProvisioner == "" {
-		return errors.New("the environment " + s.GetSanicEnvironment() +
+		return nil, errors.New("the environment " + s.GetSanicEnvironment() +
 			" does not have a 'clusterProvisioners' key defined in it.")
 	}
 
-	return Provisioners[env.ClusterProvisioner].EnsureCluster()
+	return Provisioners[env.ClusterProvisioner], nil
 }

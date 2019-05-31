@@ -6,11 +6,11 @@ import (
 )
 
 func deployCommandAction(cliContext *cli.Context) error {
-	err := provisioners.EnsureCluster()
+	provisioner, err := provisioners.GetProvisioner()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
-	return nil
+	return provisioner.EnsureCluster()
 }
 
 var deployCommand = cli.Command{
