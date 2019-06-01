@@ -1,33 +1,47 @@
 package commands
 
 import (
-	"fmt"
+	"errors"
+	"github.com/distributed-containers-inc/sanic/kubectl"
 	"github.com/distributed-containers-inc/sanic/provisioners"
 	"github.com/urfave/cli"
 	"os"
-	"os/exec"
 	"syscall"
 )
+
+func getKubectlEnvironment() ([]string, error) {
+	provisioner, err := provisioners.GetProvisioner()
+	if err != nil {
+		return nil, err
+	}
+	kubeConfigLocation := provisioner.KubeConfigLocation()
+	if _, err := os.Stat(kubeConfigLocation); os.IsNotExist(err) {
+		return nil, errors.New("the kubernetes configuration doesn't exist yet, use sanic deploy first")
+	}
+	return append(os.Environ(), "KUBECONFIG="+kubeConfigLocation), nil
+}
 
 func kubectlCommandAction(cliContext *cli.Context) error {
 	provisioner, err := provisioners.GetProvisioner()
 	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
+		return err
 	}
 	kubeConfigLocation := provisioner.KubeConfigLocation()
 	if _, err := os.Stat(kubeConfigLocation); os.IsNotExist(err) {
-		return cli.NewExitError("the kubernetes configuration doesn't exist yet, use sanic deploy first", 1)
+		return errors.New("the kubernetes configuration doesn't exist yet, use sanic deploy first")
 	}
-	kubeExecutableLocation, err := exec.LookPath("kubectl")
+	kubeExecutableLocation, err := kubectl.GetKubectlExecutablePath()
 	if err != nil {
-		return cli.NewExitError(fmt.Sprintf(
-			"the kubectl executable was not found on your PATH, it needs to be installed manually. Error:%s\n",
-			err.Error()), 1)
+		return cli.NewExitError(err.Error(), 1)
 	}
-	env := append(os.Environ(), "KUBECONFIG="+kubeConfigLocation)
+
+	env, err := getKubectlEnvironment()
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
 	err = syscall.Exec(kubeExecutableLocation, append([]string{kubeExecutableLocation}, cliContext.Args()...), env)
 	if err != nil {
-		return cli.NewExitError(err, 1)
+		return cli.NewExitError(err.Error(), 1)
 	}
 	return nil
 }

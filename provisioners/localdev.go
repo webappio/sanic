@@ -1,8 +1,10 @@
 package provisioners
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/distributed-containers-inc/sanic/kubectl"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -10,6 +12,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubeclientcmd "k8s.io/client-go/tools/clientcmd"
+	"os"
+	"os/exec"
 	"sigs.k8s.io/kind/pkg/cluster"
 	kindconfig "sigs.k8s.io/kind/pkg/cluster/config"
 	"sigs.k8s.io/kind/pkg/cluster/config/encoding"
@@ -111,7 +115,7 @@ func waitNodesReady(kube *kubernetes.Clientset, timeout time.Duration) error {
 	startTime := time.Now()
 	for {
 		nodes, lastErr := kube.CoreV1().Nodes().List(metav1.ListOptions{})
-		if lastErr != nil {
+		if lastErr == nil {
 			allNodesReady := true
 			for _, node := range nodes.Items {
 				if !kubeNodeReady(node) {
@@ -132,6 +136,111 @@ func waitNodesReady(kube *kubernetes.Clientset, timeout time.Duration) error {
 			time.Sleep(timeout - elapsedTime)
 		}
 	}
+}
+
+const traefikIngressYaml = `
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: traefik-ingress-controller
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - services
+      - endpoints
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - extensions
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: traefik-ingress-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: traefik-ingress-controller
+subjects:
+- kind: ServiceAccount
+  name: traefik-ingress-controller
+  namespace: kube-system
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: traefik-ingress-controller
+  namespace: kube-system
+
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: traefik-ingress-controller
+  namespace: kube-system
+  labels:
+    k8s-app: traefik-ingress-lb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: traefik-ingress-lb
+  template:
+    metadata:
+      labels:
+        k8s-app: traefik-ingress-lb
+        name: traefik-ingress-lb
+    spec:
+      serviceAccountName: traefik-ingress-controller
+      terminationGracePeriodSeconds: 60
+      hostNetwork: true
+      containers:
+      - image: traefik
+        name: traefik-ingress-lb
+        ports:
+        - name: http
+          containerPort: 80
+        - name: admin
+          containerPort: 8080
+        args:
+        - --api
+        - --kubernetes
+        - --logLevel=INFO
+`
+
+func (provisioner *ProvisionerLocalDev) startIngressController() error {
+	kubeExecPath, err := kubectl.GetKubectlExecutablePath()
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(kubeExecPath, "apply", "-f", "-")
+	cmd.Env = append(os.Environ(), "KUBECONFIG="+provisioner.KubeConfigLocation())
+	cmd.Stdin = bytes.NewBufferString(traefikIngressYaml)
+	errBuffer := &bytes.Buffer{}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = errBuffer
+	err = cmd.Start()
+	if err != nil {
+		return err
+	}
+	err = cmd.Wait()
+	if err != nil {
+		fmt.Fprint(os.Stderr, errBuffer.String())
+	}
+	return err
 }
 
 //EnsureCluster for localdev is a wrapper around "kind", which sets up a 4-node kubernetes cluster in docker itself.
@@ -185,10 +294,19 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 	if err != nil {
 		return err
 	}
+	err = provisioner.startIngressController()
+	if err != nil {
+		return fmt.Errorf("could not start the ingress controller: %s", err.Error())
+	}
 	kube, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		return fmt.Errorf("could not wait for nodes to come up after initialization: %s", err.Error())
 	}
 	fmt.Println("Nodes have been provisioned by kind, waiting for them to become ready. This will take up to a minute.")
-	return waitNodesReady(kube, time.Second*90)
+	err = waitNodesReady(kube, time.Second*90)
+	if err == nil {
+		fmt.Println("Done!")
+	}
+	//TODO message about where the webserver is available
+	return err
 }
