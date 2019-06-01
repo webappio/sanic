@@ -9,7 +9,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	kubeclientcmd "k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/kind/pkg/cluster"
 	kindconfig "sigs.k8s.io/kind/pkg/cluster/config"
@@ -67,6 +66,7 @@ func checkCluster(dockerCli *client.Client, kube *kubernetes.Clientset) error {
 			return fmt.Errorf("at least one required container isn't running: %s", containerName)
 		}
 	}
+
 	nodes, err := kube.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("could not list kubernetes nodes: %s", err.Error())
@@ -102,10 +102,39 @@ func deleteClusterContainers(dockerCli *client.Client) error {
 	return nil
 }
 
+//KubeConfigLocation returns the path to the kubectl configuration for this provisioner
 func (provisioner *ProvisionerLocalDev) KubeConfigLocation() string {
 	return kindContext.KubeConfigPath()
 }
 
+func waitNodesReady(kube *kubernetes.Clientset, timeout time.Duration) error {
+	startTime := time.Now()
+	for {
+		nodes, lastErr := kube.CoreV1().Nodes().List(metav1.ListOptions{})
+		if lastErr != nil {
+			allNodesReady := true
+			for _, node := range nodes.Items {
+				if !kubeNodeReady(node) {
+					allNodesReady = false
+				}
+			}
+			if allNodesReady {
+				return nil
+			}
+			lastErr = fmt.Errorf("some nodes were not ready")
+		}
+		elapsedTime := time.Now().Sub(startTime)
+		if elapsedTime > timeout {
+			return lastErr
+		} else if timeout-elapsedTime >= time.Millisecond*300 {
+			time.Sleep(time.Millisecond * 300)
+		} else {
+			time.Sleep(timeout - elapsedTime)
+		}
+	}
+}
+
+//EnsureCluster for localdev is a wrapper around "kind", which sets up a 4-node kubernetes cluster in docker itself.
 func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.24"))
 	if err != nil {
@@ -127,10 +156,9 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 
 	if clusterError == nil {
 		return nil //nothing to do, cluster is healthy
-	} else {
-		fmt.Printf("Creating a new cluster, old one cannot be used: %s\n", clusterError.Error())
-		fmt.Println("This takes between 1 and 10 minutes, depending on your internet connection speed.")
 	}
+	fmt.Printf("Creating a new cluster, old one cannot be used: %s\n", clusterError.Error())
+	fmt.Println("This takes between 1 and 10 minutes, depending on your internet connection speed.")
 	cfg := kindconfig.Cluster{}
 	encoding.Scheme.Default(&cfg)
 	cfg.Nodes = []kindconfig.Node{
@@ -153,5 +181,14 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 		return fmt.Errorf("could not delete existing containers to run cluster setup: %s", err.Error())
 	}
 
-	return kindContext.Create(&cfg, create.Retain(false), create.WaitForReady(time.Duration(0)))
+	err = kindContext.Create(&cfg, create.Retain(false), create.WaitForReady(time.Duration(0)))
+	if err != nil {
+		return err
+	}
+	kube, err := kubernetes.NewForConfig(kubeConfig)
+	if err != nil {
+		return fmt.Errorf("could not wait for nodes to come up after initialization: %s", err.Error())
+	}
+	fmt.Println("Nodes have been provisioned by kind, waiting for them to become ready. This will take up to a minute.")
+	return waitNodesReady(kube, time.Second*90)
 }
