@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/distributed-containers-inc/sanic/kubectl"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -222,17 +221,13 @@ spec:
 `
 
 func (provisioner *ProvisionerLocalDev) startIngressController() error {
-	kubeExecPath, err := kubectl.GetKubectlExecutablePath()
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command(kubeExecPath, "apply", "-f", "-")
+	cmd := exec.Command("kubectl", "apply", "-f", "-")
 	cmd.Env = append(os.Environ(), "KUBECONFIG="+provisioner.KubeConfigLocation())
 	cmd.Stdin = bytes.NewBufferString(traefikIngressYaml)
 	errBuffer := &bytes.Buffer{}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = errBuffer
-	err = cmd.Start()
+	err := cmd.Start()
 	if err != nil {
 		return err
 	}

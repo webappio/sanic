@@ -159,7 +159,7 @@ func (iface *interactiveInterface) Close() {
 	}
 
 	if anyJobsFailed {
-		fmt.Printf("Failed to build some of the following jobs: %s\n", strings.Join(serviceNames, ", "))
+		fmt.Printf("Failed to build some of the following jobs: %s\nSee the logs folder for details.\n", strings.Join(serviceNames, ", "))
 	} else {
 		fmt.Printf("Successfully built: %s\n", strings.Join(serviceNames, ", "))
 	}

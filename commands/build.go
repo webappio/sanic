@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/build"
@@ -44,8 +45,8 @@ func createBuildInterface(forceNoninteractive bool) build.Interface {
 func loadDockerTar(ctx context.Context, r io.Reader) error {
 	cmd := exec.Command("docker", "load") //TODO hack
 	cmd.Stdin = r
-	//cmd.Stdout = os.Stdout intentionally ignored
-	cmd.Stderr = os.Stderr
+	stderrBuf := &bytes.Buffer{}
+	cmd.Stderr = stderrBuf
 	cmd.Start()
 
 	processDone := make(chan error)
@@ -56,6 +57,9 @@ func loadDockerTar(ctx context.Context, r io.Reader) error {
 
 	select {
 	case err := <-processDone:
+		if err != nil {
+			fmt.Fprint(os.Stderr, stderrBuf.String())
+		}
 		return err
 	case <-ctx.Done():
 		cmd.Process.Kill()
@@ -153,6 +157,16 @@ func buildCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
+	err = build.EnsureBuildkitDaemon()
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
+
+	buildkitAddress, err := build.GetBuildkitAddress()
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
+
 	buildInterface := createBuildInterface(cliContext.Bool("plain-interface"))
 	defer buildInterface.Close()
 
@@ -177,7 +191,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 			jobError := buildService(
 				ctx,
 				finalServiceDir,
-				cliContext.String("buildkit-addr"),
+				buildkitAddress,
 				logErrorsChannel,
 				buildLogger)
 			if jobError == nil {
@@ -221,12 +235,6 @@ var buildCommand = cli.Command{
 	Usage:  "build some (or all, by default) services",
 	Action: buildCommandAction,
 	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:   "buildkit-addr",
-			Usage:  "buildkit daemon address",
-			EnvVar: "BUILDKIT_HOST",
-			Value:  "tcp://0.0.0.0:2149", //see hack/start_buildkitd.sh
-		},
 		cli.BoolFlag{
 			Name:   "plain-interface",
 			Usage:  "use a plaintext interface",

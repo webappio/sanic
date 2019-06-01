@@ -2,10 +2,11 @@ package commands
 
 import (
 	"errors"
-	"github.com/distributed-containers-inc/sanic/kubectl"
+	"fmt"
 	"github.com/distributed-containers-inc/sanic/provisioners"
 	"github.com/urfave/cli"
 	"os"
+	"os/exec"
 	"syscall"
 )
 
@@ -30,9 +31,9 @@ func kubectlCommandAction(cliContext *cli.Context) error {
 	if _, err := os.Stat(kubeConfigLocation); os.IsNotExist(err) {
 		return errors.New("the kubernetes configuration doesn't exist yet, use sanic deploy first")
 	}
-	kubeExecutableLocation, err := kubectl.GetKubectlExecutablePath()
+	kubeExecutableLocation, err := exec.LookPath("kubectl")
 	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
+		return cli.NewExitError(fmt.Sprintf("could not find kubectl, is it installed? %s", err.Error()), 1)
 	}
 
 	env, err := getKubectlEnvironment()
