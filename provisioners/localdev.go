@@ -4,19 +4,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/client"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	kubeclientcmd "k8s.io/client-go/tools/clientcmd"
+	"golang.org/x/sync/errgroup"
+	"io"
 	"os"
 	"os/exec"
 	"sigs.k8s.io/kind/pkg/cluster"
 	kindconfig "sigs.k8s.io/kind/pkg/cluster/config"
 	"sigs.k8s.io/kind/pkg/cluster/config/encoding"
 	"sigs.k8s.io/kind/pkg/cluster/create"
+	kindnode "sigs.k8s.io/kind/pkg/cluster/nodes"
+	"strings"
 	"time"
 )
 
@@ -26,115 +23,139 @@ type ProvisionerLocalDev struct{}
 
 var kindContext = cluster.NewContext("sanic")
 
-func kubeNodeReady(node corev1.Node) bool {
-	ready := false
+func clusterNodes() ([]kindnode.Node, error) {
+	return kindnode.List("label=io.k8s.sigs.kind.cluster=sanic")
+}
 
-	for _, condition := range node.Status.Conditions {
-		if condition.Type == corev1.NodeReady {
-			ready = condition.Status == corev1.ConditionTrue
+func (provisioner *ProvisionerLocalDev) checkClusterReady() error {
+	cmd := exec.Command(
+		"kubectl",
+		"--kubeconfig="+provisioner.KubeConfigLocation(),
+		"get",
+		"nodes",
+		"-o",
+		"jsonpath={.items..status.conditions[-1:].lastTransitionTime}\t{.items..status.conditions[-1:].status}",
+	)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("could not check if the cluster was running: %s %s", err.Error(), stderr.String())
+	}
+	//output is, e.g., "2019-06-02T01:04:02Z 2019-06-02T01:04:18Z 2019-06-02T01:04:17Z 2019-06-02T01:04:17Z\tTrue True True True"
+	split := strings.Split(stdout.String(), "\t")
+	if len(split) != 2 {
+		return fmt.Errorf("got invalid kubernetes output while checking if cluster was running: \"%s\"", stdout.String())
+	}
+	nodeTimes := strings.Split(split[0], " ")
+	nodesReady := strings.Split(split[1], " ")
+
+	if len(nodeTimes) != 4 {
+		return fmt.Errorf("some nodes were not running, we were expecting 4 (3 workers + one master node)")
+	}
+
+	allNodesReady := true
+	for _, nodeReady := range nodesReady {
+		nodeReady = strings.TrimSpace(nodeReady)
+		if nodeReady != "True" {
+			allNodesReady = false
+		}
+	}
+	if allNodesReady {
+		return nil
+	}
+
+	statusChangeRecent := false
+
+	for _, timeString := range nodeTimes {
+		timeString = strings.TrimSpace(timeString)
+		//TODO will kubernetes ever give iso 8601 formatted date which is not this specific format?
+		//Mon Jan 2 15:04:05 MST 2006
+		statusTime, err := time.Parse("2006-01-02T15:04:05Z", timeString)
+		if err != nil {
+			return fmt.Errorf("got invalid kubernetes output while checking how long cluster has been running: %s", timeString)
+		}
+		if statusTime.Add(time.Minute).After(time.Now()) {
+			//status has changed less than a minute ago
+			statusChangeRecent = true
 		}
 	}
 
-	return ready
+	if statusChangeRecent {
+		for {
+			fmt.Print("do you want to redeploy recently started kubernetes cluster? [y/N]: ")
+			var resp string
+			fmt.Scanln(&resp)
+			switch resp{
+			case "y", "Y":
+				return fmt.Errorf("some nodes weren't ready, and you chose to redeploy")
+			case "n", "N", "":
+				return nil
+			default:
+				fmt.Printf("Did not understand response: %s, expected y/n\n", resp)
+			}
+		}
+	}
+	return fmt.Errorf("cluster is not ready, and has not been for over a minute")
 }
 
-func checkCluster(dockerCli *client.Client, kube *kubernetes.Clientset) error {
-	clusterContainers, err := dockerCli.ContainerList(
-		context.Background(),
-		types.ContainerListOptions{
-			All:     true,
-			Filters: filters.NewArgs(filters.Arg("label", "io.k8s.sigs.kind.cluster")),
-		})
+func (provisioner *ProvisionerLocalDev) checkCluster() error {
+	nodes, err := clusterNodes()
 	if err != nil {
 		return err
 	}
 
-	requiredContainersRunning := map[string]bool{
-		"/sanic-worker":        false,
-		"/sanic-worker2":       false,
-		"/sanic-worker3":       false,
-		"/sanic-control-plane": false,
+	requiredContainersRunning := map[string]*kindnode.Node{
+		"sanic-worker":        nil,
+		"sanic-worker2":       nil,
+		"sanic-worker3":       nil,
+		"sanic-control-plane": nil,
 	}
 
-	var nodeContainerIDs []string
-
-	for _, container := range clusterContainers {
-		if _, ok := requiredContainersRunning[container.Names[0]]; ok {
-			requiredContainersRunning[container.Names[0]] = container.State == "running"
-			nodeContainerIDs = append(nodeContainerIDs, container.ID)
-		}
-	}
-	for containerName, status := range requiredContainersRunning {
-		if !status {
-			return fmt.Errorf("at least one required container isn't running: %s", containerName)
+	for _, node := range nodes {
+		if _, ok := requiredContainersRunning[node.Name()]; ok {
+			requiredContainersRunning[node.Name()] = &node
 		}
 	}
 
-	nodes, err := kube.CoreV1().Nodes().List(metav1.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("could not list kubernetes nodes: %s", err.Error())
+	if len(nodes) == 0 {
+		return fmt.Errorf("no nodes were running, cluster has to be provisioned once per docker engine restart")
 	}
-	if len(nodes.Items) != len(requiredContainersRunning) {
+
+	if len(nodes) != len(requiredContainersRunning) {
 		return fmt.Errorf("some nodes have been removed/crashed. only %d/%d were running",
-			len(nodes.Items), len(requiredContainersRunning))
+			len(nodes), len(requiredContainersRunning))
 	}
-	for _, node := range nodes.Items {
-		if !kubeNodeReady(node) {
-			return fmt.Errorf("a node was not ready.\nTo note: after deploying initially, " +
-				"wait at least 30 seconds before deploying again to let the cluster start fully")
+	for _, node := range requiredContainersRunning {
+		if node == nil {
+			return fmt.Errorf("some nodes were not running while others were, try deleting your cluster containers with docker rm")
 		}
 	}
-	return nil
+
+	return provisioner.checkClusterReady()
 }
 
-func deleteClusterContainers(dockerCli *client.Client) error {
-	clusterContainers, err := dockerCli.ContainerList(
-		context.Background(),
-		types.ContainerListOptions{
-			All:     true,
-			Filters: filters.NewArgs(filters.Arg("label", "io.k8s.sigs.kind.cluster")),
-		})
+func deleteClusterContainers() error {
+	nodes, err := clusterNodes()
 	if err != nil {
 		return err
 	}
-	for _, container := range clusterContainers {
-		if err = dockerCli.ContainerRemove(context.Background(), container.ID, types.ContainerRemoveOptions{Force: true}); err != nil {
-			return err
-		}
+	eg := errgroup.Group{}
+	for _, node := range nodes {
+		name := node.Name()
+		eg.Go(func() error {
+			cmd := exec.Command("docker", "rm", "-f", name)
+			return cmd.Run()
+		})
 	}
-	return nil
+	return eg.Wait()
 }
 
 //KubeConfigLocation returns the path to the kubectl configuration for this provisioner
 func (provisioner *ProvisionerLocalDev) KubeConfigLocation() string {
 	return kindContext.KubeConfigPath()
-}
-
-func waitNodesReady(kube *kubernetes.Clientset, timeout time.Duration) error {
-	startTime := time.Now()
-	for {
-		nodes, lastErr := kube.CoreV1().Nodes().List(metav1.ListOptions{})
-		if lastErr == nil {
-			allNodesReady := true
-			for _, node := range nodes.Items {
-				if !kubeNodeReady(node) {
-					allNodesReady = false
-				}
-			}
-			if allNodesReady {
-				return nil
-			}
-			lastErr = fmt.Errorf("some nodes were not ready")
-		}
-		elapsedTime := time.Now().Sub(startTime)
-		if elapsedTime > timeout {
-			return lastErr
-		} else if timeout-elapsedTime >= time.Millisecond*300 {
-			time.Sleep(time.Millisecond * 300)
-		} else {
-			time.Sleep(timeout - elapsedTime)
-		}
-	}
 }
 
 const traefikIngressYaml = `
@@ -240,23 +261,7 @@ func (provisioner *ProvisionerLocalDev) startIngressController() error {
 
 //EnsureCluster for localdev is a wrapper around "kind", which sets up a 4-node kubernetes cluster in docker itself.
 func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
-	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.24"))
-	if err != nil {
-		return fmt.Errorf("could not connect to docker successfully. version 1.12.1 or higher is required.\n, %s", err.Error())
-	}
-	kubeConfig, err := kubeclientcmd.BuildConfigFromFlags("", provisioner.KubeConfigLocation())
-	var clusterError error
-	if err != nil {
-		clusterError = fmt.Errorf("kind config did not exist, cluster has not been initialized")
-	} else {
-		//kind's kubernetes config exists
-		kube, err := kubernetes.NewForConfig(kubeConfig)
-		if err != nil {
-			clusterError = fmt.Errorf("could not connect to kubernetes in kind, it is likely not running: %s", err.Error())
-		} else {
-			clusterError = checkCluster(dockerCli, kube)
-		}
-	}
+	clusterError := provisioner.checkCluster()
 
 	if clusterError == nil {
 		return nil //nothing to do, cluster is healthy
@@ -281,11 +286,11 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 	}
 
 	//TODO HACK: kind does not always work if the containers are not manually removed first
-	if err := deleteClusterContainers(dockerCli); err != nil {
+	if err := deleteClusterContainers(); err != nil {
 		return fmt.Errorf("could not delete existing containers to run cluster setup: %s", err.Error())
 	}
 
-	err = kindContext.Create(&cfg, create.Retain(false), create.WaitForReady(time.Duration(0)))
+	err := kindContext.Create(&cfg, create.Retain(false))
 	if err != nil {
 		return err
 	}
@@ -293,15 +298,9 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 	if err != nil {
 		return fmt.Errorf("could not start the ingress controller: %s", err.Error())
 	}
-	kube, err := kubernetes.NewForConfig(kubeConfig)
-	if err != nil {
-		return fmt.Errorf("could not wait for nodes to come up after initialization: %s", err.Error())
-	}
-	fmt.Println("Nodes have been provisioned by kind, waiting for them to become ready. This will take up to a minute.")
-	err = waitNodesReady(kube, time.Second*90)
-	if err == nil {
-		fmt.Println("Done!")
-	}
 	//TODO message about where the webserver is available
 	return err
+	return nil
 }
+
+

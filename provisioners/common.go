@@ -1,9 +1,11 @@
 package provisioners
 
 import (
+	"context"
 	"github.com/distributed-containers-inc/sanic/config"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/pkg/errors"
+	"io"
 )
 
 //Provisioner is an interface which represents a way to deploy kubernetes services.
