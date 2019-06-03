@@ -6,6 +6,7 @@ import (
 	"github.com/distributed-containers-inc/sanic/build"
 	"github.com/distributed-containers-inc/sanic/provisioners/localdev"
 	"github.com/distributed-containers-inc/sanic/shell"
+	"github.com/distributed-containers-inc/sanic/util"
 	"github.com/moby/buildkit/client"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	"github.com/urfave/cli"
@@ -42,14 +43,17 @@ func createBuildInterface(forceNoninteractive bool) build.Interface {
 
 func buildService(
 	ctx context.Context,
+	buildInterface build.Interface,
+	buildLogger build.Logger,
 	serviceDir string,
-	buildkitAddress string,
-	logErrorsChannel chan error,
-	buildLogger build.Logger) error {
+) error {
 
 	serviceName := filepath.Base(serviceDir)
-	c, err := client.New(ctx, buildkitAddress, client.WithFailFast())
+	buildInterface.StartJob(serviceName)
+	buildkitClient, err := client.New(ctx, build.BuildkitDaemonAddr, client.WithFailFast())
 	if err != nil {
+		buildInterface.FailJob(serviceName, err)
+		buildLogger.Log(serviceName, time.Now(), "Could not connect to build daemon! ", err.Error())
 		return err
 	}
 	statusChannel := make(chan *client.SolveStatus)
@@ -57,15 +61,15 @@ func buildService(
 	buildDone := make(chan interface{})
 	eg.Go(func() error {
 		buildLogger.Log(serviceName, time.Now(), "Starting build of ", serviceDir)
-		solveStatus, err := c.Build(
+		solveStatus, err := buildkitClient.Build(
 			ctx,
 			client.SolveOpt{
 				Exports: []client.ExportEntry{
 					{
 						Type: "image",
 						Attrs: map[string]string{
-							"name": fmt.Sprintf("172.17.0.4:%d/%s:latest", localdev.RegistryNodePort, serviceName), //TODO BEFORE COMMIT
-							"push": "true",
+							"name":              fmt.Sprintf("172.17.0.4:%d/%s:latest", localdev.RegistryNodePort, serviceName), //TODO BEFORE COMMIT
+							"push":              "true",
 							"registry.insecure": "true",
 						},
 						//Output: pipeW,
@@ -103,18 +107,26 @@ func buildService(
 				}
 				logErr := buildLogger.ProcessStatus(serviceName, status)
 				if logErr != nil {
-					logErrorsChannel <- logErr
+					fmt.Fprintln(os.Stderr, logErr.Error())
 				}
 			}
 		}
 	})
 
 	select {
-	case <-ctx.Done(): //cancelled (e.g., ctrl+c or error returned from goroutine)
-		return ctx.Err()
+	case <-ctx.Done(): //cancelled (e.g., ctrl+buildkitClient or error returned from goroutine)
+		return context.Canceled
 	case <-buildDone: //successfully built + loaded
-		return ctx.Err()
+		err = ctx.Err()
 	}
+	if err == nil {
+		buildLogger.Log(serviceName, time.Now(), "Build succeeded!")
+		buildInterface.SucceedJob(serviceName)
+		return nil
+	}
+	buildInterface.FailJob(serviceName, err)
+	buildLogger.Log(serviceName, time.Now(), "Build failed! ", err.Error())
+	return err
 }
 
 //adapted from
@@ -142,62 +154,33 @@ func buildCommandAction(cliContext *cli.Context) error {
 	buildLogger.AddLogLineListener(buildInterface.ProcessLog)
 	defer buildLogger.Close()
 
-	jobErrorsChannel := make(chan error)
-	logErrorsChannel := make(chan error, 1024)
-	buildingJobs := 0
+	jobs := make([]func(context.Context) error, 0, len(services))
 
 	for _, serviceDir := range services {
-		serviceName := filepath.Base(serviceDir)
-		ctx, cancelJob := context.WithCancel(context.Background())
-		buildInterface.AddCancelListener(cancelJob)
-
 		finalServiceDir := serviceDir
-
-		buildInterface.StartJob(serviceName)
-		buildLogger.Log(serviceName, time.Now(), "Queued for building.")
-		go func() {
-			jobError := buildService(
+		jobs = append(jobs, func(ctx context.Context) error {
+			return buildService(
 				ctx,
+				buildInterface,
+				buildLogger,
 				finalServiceDir,
-				build.BuildkitDaemonAddr,
-				logErrorsChannel,
-				buildLogger)
-			if jobError == nil {
-				buildLogger.Log(serviceName, time.Now(), "Build succeeded!")
-				buildInterface.SucceedJob(serviceName)
-			} else {
-				buildInterface.FailJob(serviceName, jobError)
-				buildLogger.Log(serviceName, time.Now(), "Build failed! ", jobError.Error())
-			}
-			jobErrorsChannel <- jobError
-		}()
-		buildingJobs++
+			)
+		})
 	}
 
-	var allErrorsAreCancelled = true
-	var jobErrors []error
-	for i := 0; i < buildingJobs; i++ {
-		jobError := <-jobErrorsChannel
-		if jobError != context.Canceled {
-			allErrorsAreCancelled = false
-			if jobError != nil {
-				jobErrors = append(jobErrors, jobError)
-			}
-		}
-	}
+	userCancelledBuild := false
+	ctx, cancelJob := context.WithCancel(context.Background())
+	buildInterface.AddCancelListener(cancelJob)
+	buildInterface.AddCancelListener(func() { userCancelledBuild = true })
+	err = util.RunContextuallyInParallel(ctx, jobs...)
 
-	if allErrorsAreCancelled {
+	if userCancelledBuild {
 		fmt.Println() //clear the ^C
 		return cli.NewExitError("", 1)
 	}
 
-	close(jobErrorsChannel)
-	close(logErrorsChannel)
-	for logErr := range logErrorsChannel {
-		fmt.Fprintf(os.Stderr, "Error while attempting to log: %s\n", logErr)
-	}
-	if len(jobErrors) != 0 {
-		return cli.NewExitError(cli.NewMultiError(jobErrors...).Error(), 1)
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
 	}
 
 	return nil

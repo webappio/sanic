@@ -151,18 +151,21 @@ func (iface *interactiveInterface) Close() {
 	iface.screen.Fini()
 	var serviceNames []string
 	anyJobsFailed := false
+	allJobsFailed := true
 	for jobName, job := range iface.jobs {
 		serviceNames = append(serviceNames, jobName)
-		if job.status != "succeeded" {
+		if job.status == "succeeded" {
+			allJobsFailed = false
+		} else {
 			anyJobsFailed = true
 		}
 	}
 
-	if anyJobsFailed {
+	if allJobsFailed {
 		fmt.Printf("Failed to build some of the following jobs: %s\nSee the logs folder for details.\n", strings.Join(serviceNames, ", "))
-	} else {
+	} else if !anyJobsFailed {
 		fmt.Printf("Successfully built: %s\n", strings.Join(serviceNames, ", "))
-	}
+	} //otherwise, build was cancelled
 
 }
 

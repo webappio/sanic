@@ -19,7 +19,9 @@ func RunContextuallyInParallel(ctx context.Context, funcs ...func(context.Contex
 		finalF := f
 		eg.Go(func() error {
 			err := finalF(ctx)
-			errGroupErrors <- err
+			if err != nil {
+				errGroupErrors <- err
+			}
 			return err
 		})
 	}
