@@ -56,7 +56,7 @@ func (logger *flatfileLogger) Log(service string, when time.Time, message ...int
 		logFile.WriteString("") //wipe old logs
 		logger.openFiles[service] = logFile
 	}
-	messageString := fmt.Sprint(message...)
+	messageString := strings.Trim(fmt.Sprint(message...), "\r\n")
 	_, err := logFile.WriteString(fmt.Sprintf("[%s] %s\n", when.In(time.Local), messageString))
 	for _, listener := range logger.logLineListeners {
 		listener(service, messageString+"\n")
@@ -70,17 +70,18 @@ func (logger *flatfileLogger) Log(service string, when time.Time, message ...int
 func (logger *flatfileLogger) ProcessStatus(service string, status *client.SolveStatus) error {
 	for _, v := range status.Vertexes { //e.g., [6/6] ADD app.py ./
 		if strings.Index(v.Name, "[internal]") != 0 { //TODO HACK these are annoying
-			logger.Log(service, time.Now(), v.Name)
+			if err := logger.Log(service, time.Now(), v.Name); err != nil {
+				return errors.Errorf(
+					"Could not write to %s's logs: %s",
+					service,
+					err.Error())
+			}
 		}
 	}
 
 	for _, log := range status.Logs {
 		logMessage := []rune(string(log.Data))
-		if logMessage[len(logMessage)-1] == '\n' {
-			logMessage = logMessage[:len(logMessage)-1]
-		}
-		err := logger.Log(service, log.Timestamp, string(logMessage))
-		if err != nil {
+		if err := logger.Log(service, log.Timestamp, strings.Trim(string(logMessage), "\r\n")); err != nil {
 			return errors.Errorf(
 				"Could not write to %s's logs: %s",
 				service,
