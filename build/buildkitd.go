@@ -9,6 +9,9 @@ import (
 //BuildkitDaemonContainerName is the name of the docker container which contains the buildkit daemon
 const BuildkitDaemonContainerName = "sanic-buildkitd"
 
+//BuildkitDaemonAddr is the address on the host at which the buildkit server will be listening
+const BuildkitDaemonAddr = "tcp://127.0.0.1:31652"
+
 //EnsureBuildkitDaemon makes sure that the buildkit docker container named "sanic-buildkitd" is running
 func EnsureBuildkitDaemon() error {
 	running, err := containers.CheckRunning(BuildkitDaemonContainerName)
@@ -22,20 +25,12 @@ func EnsureBuildkitDaemon() error {
 		"run", "-d",
 		"--name", "sanic-buildkitd",
 		"--privileged",
+		"--network", "host",
 		"moby/buildkit:latest", //TODO version pin / configure buildkit version?
-		"--addr", "tcp://0.0.0.0:2149")
+		"--addr", BuildkitDaemonAddr)
 	err = cmd.Run()
 	if err != nil {
 		return fmt.Errorf("could not start the builder docker image locally: %s", err.Error())
 	}
 	return nil
-}
-
-//GetBuildkitAddress returns a buildkit-compatible tcp://(ip):(port) string with which to connect to the buildkit daemon
-func GetBuildkitAddress() (string, error) {
-	ip, err := containers.GetIPAddress(BuildkitDaemonContainerName)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("tcp://%s:2149", ip), nil
 }

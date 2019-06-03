@@ -2,7 +2,9 @@ package localdev
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"github.com/distributed-containers-inc/sanic/util"
 	"os"
 	"os/exec"
 )
@@ -90,7 +92,7 @@ spec:
         - --logLevel=INFO
 `
 
-func (provisioner *ProvisionerLocalDev) startIngressController() error {
+func (provisioner *ProvisionerLocalDev) startIngressController(ctx context.Context) error {
 	cmd := exec.Command("kubectl", "apply", "-f", "-")
 	cmd.Env = append(os.Environ(), "KUBECONFIG="+provisioner.KubeConfigLocation())
 	cmd.Stdin = bytes.NewBufferString(traefikIngressYaml)
@@ -101,7 +103,7 @@ func (provisioner *ProvisionerLocalDev) startIngressController() error {
 	if err != nil {
 		return err
 	}
-	err = cmd.Wait()
+	err = util.WaitCmdContextually(cmd, ctx)
 	if err != nil {
 		fmt.Fprint(os.Stderr, errBuffer.String())
 	}

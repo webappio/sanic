@@ -1,18 +1,16 @@
 package commands
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/build"
+	"github.com/distributed-containers-inc/sanic/provisioners/localdev"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/moby/buildkit/client"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	"github.com/urfave/cli"
 	"golang.org/x/sync/errgroup"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
 )
@@ -42,31 +40,6 @@ func createBuildInterface(forceNoninteractive bool) build.Interface {
 	return build.NewPlaintextInterface()
 }
 
-func loadDockerTar(ctx context.Context, r io.Reader) error {
-	cmd := exec.Command("docker", "load") //TODO hack
-	cmd.Stdin = r
-	stderrBuf := &bytes.Buffer{}
-	cmd.Stderr = stderrBuf
-	cmd.Start()
-
-	processDone := make(chan error)
-	go func() {
-		processDone <- cmd.Wait()
-		close(processDone)
-	}()
-
-	select {
-	case err := <-processDone:
-		if err != nil {
-			fmt.Fprint(os.Stderr, stderrBuf.String())
-		}
-		return err
-	case <-ctx.Done():
-		cmd.Process.Kill()
-		return ctx.Err()
-	}
-}
-
 func buildService(
 	ctx context.Context,
 	serviceDir string,
@@ -79,23 +52,23 @@ func buildService(
 	if err != nil {
 		return err
 	}
-	pipeR, pipeW := io.Pipe()
-
 	statusChannel := make(chan *client.SolveStatus)
 	eg, ctx := errgroup.WithContext(ctx)
 	buildDone := make(chan interface{})
 	eg.Go(func() error {
 		buildLogger.Log(serviceName, time.Now(), "Starting build of ", serviceDir)
-		_, err = c.Build(
+		solveStatus, err := c.Build(
 			ctx,
 			client.SolveOpt{
 				Exports: []client.ExportEntry{
 					{
-						Type: "docker",
+						Type: "image",
 						Attrs: map[string]string{
-							"name": serviceName + ":latest",
+							"name": fmt.Sprintf("172.17.0.4:%d/%s:latest", localdev.RegistryNodePort, serviceName), //TODO BEFORE COMMIT
+							"push": "true",
+							"registry.insecure": "true",
 						},
-						Output: pipeW,
+						//Output: pipeW,
 					},
 				},
 				LocalDirs: map[string]string{
@@ -106,18 +79,18 @@ func buildService(
 			"",
 			dockerfile.Build,
 			statusChannel)
-		pipeR.CloseWithError(err)
+		if solveStatus != nil {
+			//TODO if this is null should print a warning that we failed to push
+			//e.g., when we haven't deployed yet
+			for k, v := range solveStatus.ExporterResponse {
+				buildLogger.Log(serviceName, time.Now(), fmt.Sprintf("exporter: %s=%s", k, v))
+			}
+		}
 		if err != nil {
 			buildLogger.Log(serviceName, time.Now(), "FAILED: ", err.Error())
 		}
-		return err
-	})
-	eg.Go(func() error {
-		if err := loadDockerTar(ctx, pipeR); err != nil {
-			return err
-		}
 		buildDone <- true
-		return pipeR.Close()
+		return err
 	})
 	eg.Go(func() error {
 		for {
@@ -140,7 +113,7 @@ func buildService(
 	case <-ctx.Done(): //cancelled (e.g., ctrl+c or error returned from goroutine)
 		return ctx.Err()
 	case <-buildDone: //successfully built + loaded
-		return nil
+		return ctx.Err()
 	}
 }
 
@@ -162,12 +135,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
-	buildkitAddress, err := build.GetBuildkitAddress()
-	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
-	}
-
-	buildInterface := createBuildInterface(cliContext.Bool("plain-interface"))
+	buildInterface := createBuildInterface(cliContext.Bool("plaintext"))
 	defer buildInterface.Close()
 
 	buildLogger := build.NewFlatfileLogger(filepath.Join(s.GetSanicRoot(), "logs"))
@@ -191,7 +159,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 			jobError := buildService(
 				ctx,
 				finalServiceDir,
-				buildkitAddress,
+				build.BuildkitDaemonAddr,
 				logErrorsChannel,
 				buildLogger)
 			if jobError == nil {
@@ -206,16 +174,21 @@ func buildCommandAction(cliContext *cli.Context) error {
 		buildingJobs++
 	}
 
+	var allErrorsAreCancelled = true
 	var jobErrors []error
 	for i := 0; i < buildingJobs; i++ {
 		jobError := <-jobErrorsChannel
-		if jobError == context.Canceled {
-			fmt.Println() //clear the ^C
-			return cli.NewExitError("", 1)
+		if jobError != context.Canceled {
+			allErrorsAreCancelled = false
+			if jobError != nil {
+				jobErrors = append(jobErrors, jobError)
+			}
 		}
-		if jobError != nil {
-			jobErrors = append(jobErrors, jobError)
-		}
+	}
+
+	if allErrorsAreCancelled {
+		fmt.Println() //clear the ^C
+		return cli.NewExitError("", 1)
 	}
 
 	close(jobErrorsChannel)
@@ -236,7 +209,7 @@ var buildCommand = cli.Command{
 	Action: buildCommandAction,
 	Flags: []cli.Flag{
 		cli.BoolFlag{
-			Name:   "plain-interface",
+			Name:   "plaintext",
 			Usage:  "use a plaintext interface",
 			EnvVar: "PLAINTEXT_INTERFACE",
 		},
