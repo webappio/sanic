@@ -1,29 +1,19 @@
 package build
 
 import (
-	"bytes"
 	"fmt"
+	"github.com/distributed-containers-inc/sanic/dockerbridge"
 	"os/exec"
-	"strings"
 )
 
-func daemonRunning() (bool, error) {
-	cmd := exec.Command("docker", "inspect", "--format", "{{.State.Status}}", "sanic-buildkitd")
-	out := &bytes.Buffer{}
-	cmd.Stdout = out
-	err := cmd.Start()
-	if err != nil {
-		return false, err
-	}
-	cmd.Wait() //ignore error
-	return strings.TrimSpace(out.String()) == "running", nil
-}
+//BuildkitDaemonContainerName is the name of the docker container which contains the buildkit daemon
+const BuildkitDaemonContainerName = "sanic-buildkitd"
 
 //EnsureBuildkitDaemon makes sure that the buildkit docker container named "sanic-buildkitd" is running
 func EnsureBuildkitDaemon() error {
-	running, err := daemonRunning()
+	running, err := containers.CheckRunning(BuildkitDaemonContainerName)
 	if err != nil {
-		return fmt.Errorf("could not connect to docker, is it installed and running? %s", err.Error())
+		return err
 	}
 	if running {
 		return nil
@@ -43,13 +33,6 @@ func EnsureBuildkitDaemon() error {
 
 //GetBuildkitAddress returns a buildkit-compatible tcp://(ip):(port) string with which to connect to the buildkit daemon
 func GetBuildkitAddress() (string, error) {
-	cmd := exec.Command("docker", "inspect", "--format", "{{.NetworkSettings.IPAddress}}", "sanic-buildkitd")
-	out := &bytes.Buffer{}
-	cmd.Stdout = out
-	err := cmd.Run()
-	if err != nil {
-		return "", fmt.Errorf("could not find buildkit daemon's IP Address, are you using custom networking on your docker daemon? %s", err.Error())
-	}
-	ip := strings.TrimSpace(out.String())
+	ip, err := containers.GetIPAddress(BuildkitDaemonContainerName)
 	return fmt.Sprintf("tcp://%s:2149", ip), nil
 }
