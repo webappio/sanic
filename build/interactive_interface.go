@@ -5,6 +5,7 @@ import (
 	"github.com/gdamore/tcell"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type interactiveInterfaceJob struct {
 
 type interactiveInterface struct {
 	jobs            map[string]*interactiveInterfaceJob
+	mutex           sync.Mutex
 	screen          tcell.Screen
 	screenStyle     tcell.Style
 	running         bool
@@ -77,6 +79,9 @@ func NewInteractiveInterface() (Interface, error) {
 
 func (iface interactiveInterface) redrawScreen() {
 	width, height := iface.screen.Size()
+
+	iface.mutex.Lock()
+	defer iface.mutex.Unlock()
 
 	var succeededJobs []*interactiveInterfaceJob
 	var failedJobs []*interactiveInterfaceJob
@@ -147,6 +152,9 @@ func (iface interactiveInterface) redrawScreen() {
 }
 
 func (iface *interactiveInterface) Close() {
+	iface.mutex.Lock()
+	defer iface.mutex.Unlock()
+
 	iface.running = false
 	iface.screen.Fini()
 	var serviceNames []string
@@ -170,22 +178,34 @@ func (iface *interactiveInterface) Close() {
 }
 
 func (iface *interactiveInterface) StartJob(service string) {
+	iface.mutex.Lock()
+	defer iface.mutex.Unlock()
+
 	iface.jobs[service] = &interactiveInterfaceJob{service: service}
 }
 
 func (iface *interactiveInterface) FailJob(service string, err error) {
+	iface.mutex.Lock()
+	defer iface.mutex.Unlock()
+
 	if job, ok := iface.jobs[service]; ok {
 		job.status = "failed"
 	}
 }
 
 func (iface *interactiveInterface) SucceedJob(service string) {
+	iface.mutex.Lock()
+	defer iface.mutex.Unlock()
+
 	if job, ok := iface.jobs[service]; ok {
 		job.status = "succeeded"
 	}
 }
 
 func (iface *interactiveInterface) ProcessLog(service, logLine string) {
+	iface.mutex.Lock()
+	defer iface.mutex.Unlock()
+
 	job, ok := iface.jobs[service]
 	if !ok {
 		panic("Could not find service: " + service)

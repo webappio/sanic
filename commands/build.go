@@ -10,7 +10,6 @@ import (
 	"github.com/moby/buildkit/client"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	"github.com/urfave/cli"
-	"golang.org/x/sync/errgroup"
 	"os"
 	"path/filepath"
 	"time"
@@ -41,6 +40,26 @@ func createBuildInterface(forceNoninteractive bool) build.Interface {
 	return build.NewPlaintextInterface()
 }
 
+func buildOptions(serviceDir string) client.SolveOpt {
+	return client.SolveOpt{
+		Exports: []client.ExportEntry{
+			{
+				Type: "image",
+				Attrs: map[string]string{
+					"name":              fmt.Sprintf("172.17.0.4:%d/%s:latest", localdev.RegistryNodePort, filepath.Base(serviceDir)), //TODO BEFORE COMMIT
+					"push":              "true",
+					"registry.insecure": "true",
+				},
+				//Output: pipeW,
+			},
+		},
+		LocalDirs: map[string]string{
+			"context":    serviceDir,
+			"dockerfile": serviceDir,
+		},
+	}
+}
+
 func buildService(
 	ctx context.Context,
 	buildInterface build.Interface,
@@ -50,82 +69,55 @@ func buildService(
 
 	serviceName := filepath.Base(serviceDir)
 	buildInterface.StartJob(serviceName)
-	buildkitClient, err := client.New(ctx, build.BuildkitDaemonAddr, client.WithFailFast())
-	if err != nil {
-		buildInterface.FailJob(serviceName, err)
-		buildLogger.Log(serviceName, time.Now(), "Could not connect to build daemon! ", err.Error())
-		return err
-	}
 	statusChannel := make(chan *client.SolveStatus)
-	eg, ctx := errgroup.WithContext(ctx)
-	buildDone := make(chan interface{})
-	eg.Go(func() error {
-		buildLogger.Log(serviceName, time.Now(), "Starting build of ", serviceDir)
-		solveStatus, err := buildkitClient.Build(
-			ctx,
-			client.SolveOpt{
-				Exports: []client.ExportEntry{
-					{
-						Type: "image",
-						Attrs: map[string]string{
-							"name":              fmt.Sprintf("172.17.0.4:%d/%s:latest", localdev.RegistryNodePort, serviceName), //TODO BEFORE COMMIT
-							"push":              "true",
-							"registry.insecure": "true",
-						},
-						//Output: pipeW,
-					},
-				},
-				LocalDirs: map[string]string{
-					"context":    serviceDir,
-					"dockerfile": serviceDir,
-				},
-			},
-			"",
-			dockerfile.Build,
-			statusChannel)
-		if solveStatus != nil {
-			//TODO if this is null should print a warning that we failed to push
-			//e.g., when we haven't deployed yet
-			for k, v := range solveStatus.ExporterResponse {
-				buildLogger.Log(serviceName, time.Now(), fmt.Sprintf("exporter: %s=%s", k, v))
+	err := util.RunContextuallyInParallel(
+		ctx,
+		func(ctx context.Context) error {
+			buildkitClient, err := client.New(ctx, build.BuildkitDaemonAddr, client.WithFailFast())
+			if err != nil {
+				buildInterface.FailJob(serviceName, err)
+				buildLogger.Log(serviceName, time.Now(), "Could not connect to build daemon! ", err.Error())
+				return err
 			}
-		}
-		if err != nil {
-			buildLogger.Log(serviceName, time.Now(), "FAILED: ", err.Error())
-		}
-		buildDone <- true
-		return err
-	})
-	eg.Go(func() error {
-		for {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case status, ok := <-statusChannel:
-				if !ok {
-					return nil
-				}
-				logErr := buildLogger.ProcessStatus(serviceName, status)
-				if logErr != nil {
-					fmt.Fprintln(os.Stderr, logErr.Error())
+			buildLogger.Log(serviceName, time.Now(), "Starting build of ", serviceDir)
+			solveStatus, err := buildkitClient.Build(ctx, buildOptions(serviceDir), "", dockerfile.Build, statusChannel)
+			if solveStatus != nil {
+				//TODO if this is null should print a warning that we failed to push
+				//e.g., when we haven't deployed yet
+				for k, v := range solveStatus.ExporterResponse {
+					buildLogger.Log(serviceName, time.Now(), fmt.Sprintf("exporter: %s=%s", k, v))
 				}
 			}
-		}
-	})
+			if err != nil {
+				buildLogger.Log(serviceName, time.Now(), "FAILED: ", err.Error())
+			}
+			return err
+		},
+		func(ctx context.Context) error {
+			for {
+				select {
+				case <-ctx.Done():
+					return context.Canceled
+				case status, ok := <-statusChannel:
+					if !ok {
+						return nil
+					}
+					logErr := buildLogger.ProcessStatus(serviceName, status)
+					if logErr != nil {
+						fmt.Fprintln(os.Stderr, logErr.Error())
+					}
+				}
+			}
+		},
+	)
 
-	select {
-	case <-ctx.Done(): //cancelled (e.g., ctrl+buildkitClient or error returned from goroutine)
-		return context.Canceled
-	case <-buildDone: //successfully built + loaded
-		err = ctx.Err()
-	}
 	if err == nil {
 		buildLogger.Log(serviceName, time.Now(), "Build succeeded!")
 		buildInterface.SucceedJob(serviceName)
-		return nil
+	} else if err != context.Canceled {
+		buildInterface.FailJob(serviceName, err)
+		buildLogger.Log(serviceName, time.Now(), "Build failed! ", err.Error())
 	}
-	buildInterface.FailJob(serviceName, err)
-	buildLogger.Log(serviceName, time.Now(), "Build failed! ", err.Error())
 	return err
 }
 

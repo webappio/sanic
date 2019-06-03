@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -22,6 +23,7 @@ type flatfileLogger struct {
 	LogDirectory string
 
 	openFiles        map[string]*os.File
+	openFilesMutex   sync.Mutex
 	logLineListeners []func(service, logLine string)
 }
 
@@ -37,6 +39,7 @@ func NewFlatfileLogger(logDirectory string) Logger {
 func (logger *flatfileLogger) Log(service string, when time.Time, message ...interface{}) error {
 	var logFile *os.File
 
+	logger.openFilesMutex.Lock()
 	if existingFile, ok := logger.openFiles[service]; ok {
 		logFile = existingFile
 	} else {
@@ -56,6 +59,7 @@ func (logger *flatfileLogger) Log(service string, when time.Time, message ...int
 		logFile.WriteString("") //wipe old logs
 		logger.openFiles[service] = logFile
 	}
+	logger.openFilesMutex.Unlock()
 	messageString := strings.Trim(fmt.Sprint(message...), "\r\n")
 	_, err := logFile.WriteString(fmt.Sprintf("[%s] %s\n", when.In(time.Local), messageString))
 	for _, listener := range logger.logLineListeners {
@@ -92,6 +96,9 @@ func (logger *flatfileLogger) ProcessStatus(service string, status *client.Solve
 }
 
 func (logger *flatfileLogger) Close() {
+	logger.openFilesMutex.Lock()
+	defer logger.openFilesMutex.Unlock()
+	
 	for _, f := range logger.openFiles {
 		f.Close()
 	}

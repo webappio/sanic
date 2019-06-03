@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type plaintextInterfaceJob struct {
 type plaintextInterface struct {
 	jobs            map[string]*plaintextInterfaceJob
 	cancelListeners []func()
+	mutex           sync.Mutex
 }
 
 func addSignalCanceller(iface *plaintextInterface) {
@@ -48,10 +50,16 @@ func (iface *plaintextInterface) Close() {
 }
 
 func (iface *plaintextInterface) StartJob(service string) {
+	iface.mutex.Lock()
+	defer iface.mutex.Unlock()
+
 	iface.jobs[service] = &plaintextInterfaceJob{}
 }
 
 func (iface *plaintextInterface) FailJob(service string, err error) {
+	iface.mutex.Lock()
+	defer iface.mutex.Unlock()
+
 	if job, ok := iface.jobs[service]; ok {
 		logs := job.totalJobLogs.String()
 		if err == context.Canceled {
@@ -68,6 +76,9 @@ func (iface *plaintextInterface) FailJob(service string, err error) {
 }
 
 func (iface *plaintextInterface) SucceedJob(service string) {
+	iface.mutex.Lock()
+	defer iface.mutex.Unlock()
+
 	if job, ok := iface.jobs[service]; ok {
 		logs := job.totalJobLogs.String()
 		if logs != "" {
@@ -81,6 +92,9 @@ func (iface *plaintextInterface) SucceedJob(service string) {
 }
 
 func (iface *plaintextInterface) ProcessLog(service, logLine string) {
+	iface.mutex.Lock()
+	defer iface.mutex.Unlock()
+
 	job := iface.jobs[service]
 	logs := &job.totalJobLogs
 	if job.startTime.IsZero() {
