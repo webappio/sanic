@@ -1,11 +1,10 @@
 package provisioners
 
 import (
-	"context"
 	"github.com/distributed-containers-inc/sanic/config"
+	"github.com/distributed-containers-inc/sanic/provisioners/localdev"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/pkg/errors"
-	"io"
 )
 
 //Provisioner is an interface which represents a way to deploy kubernetes services.
@@ -20,7 +19,7 @@ type Provisioner interface {
 }
 
 var Provisioners = map[string]Provisioner{
-	"localdev": &ProvisionerLocalDev{},
+	"localdev": &localdev.ProvisionerLocalDev{},
 }
 
 func GetProvisioner() (Provisioner, error) {

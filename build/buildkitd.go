@@ -34,5 +34,8 @@ func EnsureBuildkitDaemon() error {
 //GetBuildkitAddress returns a buildkit-compatible tcp://(ip):(port) string with which to connect to the buildkit daemon
 func GetBuildkitAddress() (string, error) {
 	ip, err := containers.GetIPAddress(BuildkitDaemonContainerName)
+	if err != nil {
+		return "", err
+	}
 	return fmt.Sprintf("tcp://%s:2149", ip), nil
 }

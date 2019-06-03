@@ -1,12 +1,9 @@
-package provisioners
+package localdev
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"golang.org/x/sync/errgroup"
-	"io"
-	"os"
 	"os/exec"
 	"sigs.k8s.io/kind/pkg/cluster"
 	kindconfig "sigs.k8s.io/kind/pkg/cluster/config"
@@ -16,10 +13,6 @@ import (
 	"strings"
 	"time"
 )
-
-//ProvisionerLocalDev is a provisioner which uses "kind" to set up a local, 4-node development kubernetes cluster
-//within docker itself.
-type ProvisionerLocalDev struct{}
 
 var kindContext = cluster.NewContext("sanic")
 
@@ -88,7 +81,7 @@ func (provisioner *ProvisionerLocalDev) checkClusterReady() error {
 			fmt.Print("do you want to redeploy recently started kubernetes cluster? [y/N]: ")
 			var resp string
 			fmt.Scanln(&resp)
-			switch resp{
+			switch resp {
 			case "y", "Y":
 				return fmt.Errorf("some nodes weren't ready, and you chose to redeploy")
 			case "n", "N", "":
@@ -153,121 +146,7 @@ func deleteClusterContainers() error {
 	return eg.Wait()
 }
 
-//KubeConfigLocation returns the path to the kubectl configuration for this provisioner
-func (provisioner *ProvisionerLocalDev) KubeConfigLocation() string {
-	return kindContext.KubeConfigPath()
-}
-
-const traefikIngressYaml = `
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: traefik-ingress-controller
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - services
-      - endpoints
-      - secrets
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - extensions
-    resources:
-      - ingresses
-    verbs:
-      - get
-      - list
-      - watch
-
----
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: traefik-ingress-controller
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: traefik-ingress-controller
-subjects:
-- kind: ServiceAccount
-  name: traefik-ingress-controller
-  namespace: kube-system
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: traefik-ingress-controller
-  namespace: kube-system
-
----
-kind: Deployment
-apiVersion: extensions/v1beta1
-metadata:
-  name: traefik-ingress-controller
-  namespace: kube-system
-  labels:
-    k8s-app: traefik-ingress-lb
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      k8s-app: traefik-ingress-lb
-  template:
-    metadata:
-      labels:
-        k8s-app: traefik-ingress-lb
-        name: traefik-ingress-lb
-    spec:
-      serviceAccountName: traefik-ingress-controller
-      terminationGracePeriodSeconds: 60
-      hostNetwork: true
-      containers:
-      - image: traefik
-        name: traefik-ingress-lb
-        ports:
-        - name: http
-          containerPort: 80
-        - name: admin
-          containerPort: 8080
-        args:
-        - --api
-        - --kubernetes
-        - --logLevel=INFO
-`
-
-func (provisioner *ProvisionerLocalDev) startIngressController() error {
-	cmd := exec.Command("kubectl", "apply", "-f", "-")
-	cmd.Env = append(os.Environ(), "KUBECONFIG="+provisioner.KubeConfigLocation())
-	cmd.Stdin = bytes.NewBufferString(traefikIngressYaml)
-	errBuffer := &bytes.Buffer{}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = errBuffer
-	err := cmd.Start()
-	if err != nil {
-		return err
-	}
-	err = cmd.Wait()
-	if err != nil {
-		fmt.Fprint(os.Stderr, errBuffer.String())
-	}
-	return err
-}
-
-//EnsureCluster for localdev is a wrapper around "kind", which sets up a 4-node kubernetes cluster in docker itself.
-func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
-	clusterError := provisioner.checkCluster()
-
-	if clusterError == nil {
-		return nil //nothing to do, cluster is healthy
-	}
-	fmt.Printf("Creating a new cluster, old one cannot be used: %s\n", clusterError.Error())
-	fmt.Println("This takes between 1 and 10 minutes, depending on your internet connection speed.")
+func (provisioner *ProvisionerLocalDev) startCluster() error {
 	cfg := kindconfig.Cluster{}
 	encoding.Scheme.Default(&cfg)
 	cfg.Nodes = []kindconfig.Node{
@@ -290,17 +169,5 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 		return fmt.Errorf("could not delete existing containers to run cluster setup: %s", err.Error())
 	}
 
-	err := kindContext.Create(&cfg, create.Retain(false))
-	if err != nil {
-		return err
-	}
-	err = provisioner.startIngressController()
-	if err != nil {
-		return fmt.Errorf("could not start the ingress controller: %s", err.Error())
-	}
-	//TODO message about where the webserver is available
-	return err
-	return nil
+	return kindContext.Create(&cfg, create.Retain(false))
 }
-
-
