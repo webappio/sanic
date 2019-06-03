@@ -21,7 +21,7 @@ require (
 	github.com/coreos/etcd v3.3.13+incompatible // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/dgryski/go-sip13 v0.0.0-20190329191031-25c5027a8c7b // indirect
-	github.com/docker/cli v0.0.0-20190529200812-c02f389c787f // indirect
+	github.com/docker/cli v0.0.0-20190529200812-c02f389c787f
 	github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c
 	github.com/docker/docker-credential-helpers v0.6.2 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
