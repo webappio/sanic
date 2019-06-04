@@ -10,12 +10,10 @@ import (
 //within docker itself.
 type ProvisionerLocalDev struct{}
 
-//KubeConfigLocation returns the path to the kubectl configuration for this provisioner
 func (provisioner *ProvisionerLocalDev) KubeConfigLocation() string {
 	return kindContext.KubeConfigPath()
 }
 
-//EnsureCluster for localdev is a wrapper around "kind", which sets up a 4-node kubernetes cluster in docker itself.
 func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 	clusterError := provisioner.checkCluster()
 
@@ -36,4 +34,21 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 	return err
 }
 
+func (provisioner *ProvisionerLocalDev) Registry() (string, error) {
+	masters, err := clusterMasterNodes()
+	if err != nil {
+		return "", err
+	}
+	if len(masters) != 1 {
+		return "", fmt.Errorf("got %d control plane containers, expected only one", len(masters))
+	}
+	ip, err := masters[0].IP()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s:%d", ip, RegistryNodePort), nil
+}
 
+func (provisioner *ProvisionerLocalDev) RegistryPushDefault() bool {
+	return true
+}

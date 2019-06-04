@@ -13,9 +13,15 @@ type Provisioner interface {
 	//with instructions on how to set up the cluster.
 	EnsureCluster() error
 
-	//GetKubeConfig returns where the absolute path to where the configuration file is placed for this provisioner
+	//KubeConfigLocation returns where the absolute path to where the configuration file is placed for this provisioner
 	//Note: it might not necessarily exist
 	KubeConfigLocation() string
+
+	//Registry returns the registry to push to, e.g., registry.example.com:3000, or "" if none is defined
+	Registry() (string, error)
+
+	//RegistryPushDefault returns whether to push by default in this environment (opt-out) or vice-versa (opt-in)
+	RegistryPushDefault() bool
 }
 
 var Provisioners = map[string]Provisioner{

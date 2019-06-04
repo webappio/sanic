@@ -20,6 +20,10 @@ func clusterNodes() ([]kindnode.Node, error) {
 	return kindnode.List("label=io.k8s.sigs.kind.cluster=sanic")
 }
 
+func clusterMasterNodes() ([]kindnode.Node, error) {
+	return kindnode.List("label=io.k8s.sigs.kind.cluster=sanic", "label=io.k8s.sigs.kind.role=control-plane")
+}
+
 func (provisioner *ProvisionerLocalDev) checkClusterReady() error {
 	cmd := exec.Command(
 		"kubectl",

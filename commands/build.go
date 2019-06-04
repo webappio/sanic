@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/build"
-	"github.com/distributed-containers-inc/sanic/provisioners/localdev"
+	"github.com/distributed-containers-inc/sanic/provisioners"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/distributed-containers-inc/sanic/util"
 	"github.com/moby/buildkit/client"
@@ -40,24 +40,38 @@ func createBuildInterface(forceNoninteractive bool) build.Interface {
 	return build.NewPlaintextInterface()
 }
 
-func buildOptions(serviceDir string) client.SolveOpt {
-	return client.SolveOpt{
-		Exports: []client.ExportEntry{
-			{
-				Type: "image",
-				Attrs: map[string]string{
-					"name":              fmt.Sprintf("172.17.0.4:%d/%s:latest", localdev.RegistryNodePort, filepath.Base(serviceDir)), //TODO BEFORE COMMIT
-					"push":              "true",
-					"registry.insecure": "true",
-				},
-				//Output: pipeW,
-			},
-		},
+func buildOptions(serviceDir string) (*client.SolveOpt, error) {
+	provisioner, err := provisioners.GetProvisioner()
+
+	if err != nil {
+		return nil, err
+	}
+
+	solveOpt := &client.SolveOpt{
 		LocalDirs: map[string]string{
 			"context":    serviceDir,
 			"dockerfile": serviceDir,
 		},
 	}
+
+	if provisioner.RegistryPushDefault() {
+		registry, err := provisioner.Registry()
+		if err != nil {
+			return nil, err
+		}
+		solveOpt.Exports = []client.ExportEntry{
+			{
+				Type: "image",
+				Attrs: map[string]string{
+					"name": fmt.Sprintf("%s/%s:latest", registry, filepath.Base(serviceDir)),
+					"push": "true",
+					"registry.insecure": "true", //TODO probably shouldn't be by default
+				},
+			},
+		}
+	}
+
+	return solveOpt, nil
 }
 
 func buildService(
@@ -80,7 +94,13 @@ func buildService(
 				return err
 			}
 			buildLogger.Log(serviceName, time.Now(), "Starting build of ", serviceDir)
-			solveStatus, err := buildkitClient.Build(ctx, buildOptions(serviceDir), "", dockerfile.Build, statusChannel)
+			buildOpts, err := buildOptions(serviceDir)
+			if err != nil {
+				buildInterface.FailJob(serviceName, err)
+				buildLogger.Log(serviceName, time.Now(), "Could not resolve build options (e.g., where to push to)!", err.Error())
+				return err
+			}
+			solveStatus, err := buildkitClient.Build(ctx, *buildOpts, "", dockerfile.Build, statusChannel)
 			if solveStatus != nil {
 				//TODO if this is null should print a warning that we failed to push
 				//e.g., when we haven't deployed yet
