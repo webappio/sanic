@@ -1,0 +1,2 @@
+# it's important to gitignore sanic output directories
+*
