@@ -7,9 +7,25 @@ import (
 	"github.com/distributed-containers-inc/sanic/provisioners"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/urfave/cli"
+	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 )
+
+func clearYamlsFromDir(folderOut string) error {
+	files, err := filepath.Glob(folderOut + "/*.yaml")
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		err = os.Remove(f)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func runTemplater(folderIn, folderOut, templaterImage string) error {
 	shl, err := shell.Current()
@@ -26,12 +42,24 @@ func runTemplater(folderIn, folderOut, templaterImage string) error {
 		return err
 	}
 
+	err = clearYamlsFromDir(folderOut)
+	if err != nil {
+		return err
+	}
+
+
+	tempFolderOut, err := ioutil.TempDir("", "sanicdeploy")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tempFolderOut)
+
 	cmd := exec.Command(
 		"docker",
 		"run",
 		"--rm",
 		"-v", folderIn+"/:/in:ro",
-		"-v", folderOut+"/:/out",
+		"-v", tempFolderOut+"/:/out",
 		"-e", "SANIC_ENV="+shl.GetSanicEnvironment(),
 		"-e", "REGISTRY_HOST="+registry,
 		templaterImage,
@@ -43,6 +71,20 @@ func runTemplater(folderIn, folderOut, templaterImage string) error {
 		return fmt.Errorf(
 			"could not generate the kubernetes configurations from %s: %s\n%s",
 			folderIn, err.Error(), stderrBuffer.String())
+	}
+	templatedFiles, err := filepath.Glob(tempFolderOut + "/*")
+	if err != nil {
+		return fmt.Errorf("could not read the templated deployment files: %s", err.Error())
+	}
+	for _, f := range templatedFiles { //we volume mount a temp folder and copy from there to ensure files are owned by the user and not root
+		fileData, err := ioutil.ReadFile(f)
+		if err != nil {
+			return err
+		}
+		err = ioutil.WriteFile(folderOut+"/"+filepath.Base(f), fileData, 0400)
+		if err != nil {
+			return fmt.Errorf("could not write the template %s to the directory %s: %s", f, folderOut, err.Error())
+		}
 	}
 	return nil
 }
@@ -81,7 +123,7 @@ func deployCommandAction(cliContext *cli.Context) error {
 	}
 	err = runTemplater(folderIn, folderOut, cfg.Deploy.TemplaterImage)
 	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
+		return cli.NewExitError(fmt.Sprintf("could not compile templates: %s", err.Error()), 1)
 	}
 	err = kubectlApplyFolder(folderOut, provisioner)
 	if err != nil {
