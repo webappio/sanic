@@ -1,4 +1,4 @@
-package containers
+package dockerbridge
 
 import (
 	"bytes"
@@ -30,4 +30,9 @@ func GetIPAddress(containerIdentifier string) (string, error) {
 		return "", fmt.Errorf("could not find %s daemon's IP Address, are you using custom networking on your docker daemon? %s", containerIdentifier, err.Error())
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+func ForceRemove(containerIdentifier string) error {
+	cmd := exec.Command("docker", "rm", "--force", containerIdentifier)
+	return cmd.Run()
 }
