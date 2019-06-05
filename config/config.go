@@ -25,9 +25,15 @@ type Environment struct {
 	ClusterProvisioner string `yaml:"clusterProvisioner"`
 }
 
+type Deploy struct {
+	Folder string
+	TemplaterImage string `yaml:"templaterImage"`
+}
+
 //SanicConfig is the global structure of entries in sanic.yaml
 type SanicConfig struct {
 	Environments map[string]Environment
+	Deploy Deploy
 }
 
 //ReadFromPath returns a new SanicConfig from the given filesystem path to a yaml file
@@ -50,7 +56,12 @@ func ReadFromPath(configPath string) (SanicConfig, error) {
 				envName, env.ClusterProvisioner))
 		}
 	}
-
+	if cfg.Deploy.Folder == "" {
+		cfg.Deploy.Folder = "deploy"
+	}
+	if cfg.Deploy.TemplaterImage == "" {
+		cfg.Deploy.TemplaterImage = "sanic/templater-golang"
+	}
 	return cfg, nil
 }
 

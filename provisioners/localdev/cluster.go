@@ -2,7 +2,9 @@ package localdev
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"github.com/distributed-containers-inc/sanic/util"
 	"golang.org/x/sync/errgroup"
 	"os/exec"
 	"sigs.k8s.io/kind/pkg/cluster"
@@ -150,6 +152,47 @@ func deleteClusterContainers() error {
 	return eg.Wait()
 }
 
+const nodeRegistryConfigPatch = `
+grep -q '[REGISTRY]' /etc/containerd/config.toml || \
+{ sed -i -e '/\[plugins\.cri\.registry\.mirrors\]/a\' \
+  -e '        [plugins.cri.registry.mirrors."[REGISTRY]"]\' \
+  -e '          endpoint = ["http://[REGISTRY]"]' \
+  /etc/containerd/config.toml;
+  systemctl restart containerd;
+}
+`
+
+//patchRegistryContainers makes the internal docker registry trusted by the nodes, to allow local pushes there
+//the config patch checks if the registry has already been patched,
+//  if it hasn't been patched, it inserts two new lines in /etc/containerd/config.toml to allow insecure pulls via HTTP
+//  from it, and then restarts containerd for the configuration change to take effect
+func (provisioner *ProvisionerLocalDev) patchRegistryContainers(ctx context.Context) error {
+	nodes, err := clusterNodes()
+	if err != nil {
+		return err
+	}
+
+	registry, err := provisioner.Registry()
+	if err != nil {
+		return err
+	}
+
+	var funcs []func(context.Context) error
+	for _, node := range nodes {
+		containerIdentifier := node.Name()
+		funcs = append(funcs, func(ctx context.Context) error {
+			cmd := exec.Command(
+				"docker", "exec", containerIdentifier,
+				"bash", "-c",
+				strings.ReplaceAll(nodeRegistryConfigPatch, `[REGISTRY]`, registry),
+			)
+			cmd.Start()
+			return util.WaitCmdContextually(cmd, ctx)
+		})
+	}
+	return util.RunContextuallyInParallel(ctx, funcs...)
+}
+
 func (provisioner *ProvisionerLocalDev) startCluster() error {
 	cfg := kindconfig.Cluster{}
 	encoding.Scheme.Default(&cfg)
@@ -170,7 +213,8 @@ func (provisioner *ProvisionerLocalDev) startCluster() error {
 
 	//TODO HACK: kind does not always work if the containers are not manually removed first
 	if err := deleteClusterContainers(); err != nil {
-		return fmt.Errorf("could not delete existing containers to run cluster setup: %s", err.Error())
+		//noinspection ALL
+		return fmt.Errorf("could not delete existing containers to run cluster setup: %s. Is the docker engine running?", err.Error())
 	}
 
 	return kindContext.Create(&cfg, create.Retain(false))

@@ -10,3 +10,7 @@ environments:
     clusterProvisioner: localdev
   prod:
     commands: []
+
+deploy:
+  folder: "deploy"
+  templaterImage: "sanic/templater-golang:latest"

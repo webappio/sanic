@@ -18,7 +18,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 10
       containers:
-      - image: {{.Getenv "REGISTRY_HOST"}}/web:latest
+      - image: {{getenv "REGISTRY_HOST" "missing"}}/web:latest
         name: web
         ports:
         - name: http
@@ -34,4 +34,4 @@ spec:
     k8s-app: web
   ports:
   - protocol: TCP
-    port: http
+    port: 80

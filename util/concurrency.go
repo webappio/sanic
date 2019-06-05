@@ -45,6 +45,9 @@ func WaitCmdContextually(cmd *exec.Cmd, ctx context.Context) error {
 	case err := <-cmdDone:
 		return err
 	case <-ctx.Done():
-		return cmd.Process.Kill()
+		if cmd.Process != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
 	}
 }
