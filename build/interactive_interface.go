@@ -77,7 +77,7 @@ func NewInteractiveInterface() (Interface, error) {
 	return iface, nil
 }
 
-func (iface interactiveInterface) redrawScreen() {
+func (iface *interactiveInterface) redrawScreen() {
 	width, height := iface.screen.Size()
 
 	iface.mutex.Lock()

@@ -98,7 +98,7 @@ func (logger *flatfileLogger) ProcessStatus(service string, status *client.Solve
 func (logger *flatfileLogger) Close() {
 	logger.openFilesMutex.Lock()
 	defer logger.openFilesMutex.Unlock()
-	
+
 	for _, f := range logger.openFiles {
 		f.Close()
 	}

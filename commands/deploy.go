@@ -48,7 +48,7 @@ func runTemplater(folderIn, folderOut, templaterImage string) error {
 }
 
 func kubectlApplyFolder(folder string, provisioner provisioners.Provisioner) error {
-	cmd := exec.Command("kubectl","--kubeconfig", provisioner.KubeConfigLocation(), "apply", "-f", folder)
+	cmd := exec.Command("kubectl", "--kubeconfig", provisioner.KubeConfigLocation(), "apply", "-f", folder)
 	return cmd.Run()
 }
 

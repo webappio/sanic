@@ -21,18 +21,8 @@ func CheckRunning(containerIdentifier string) (bool, error) {
 	return strings.TrimSpace(out.String()) == "running", nil
 }
 
-func GetIPAddress(containerIdentifier string) (string, error) {
-	cmd := exec.Command("docker", "inspect", "--format", "{{.NetworkSettings.IPAddress}}", containerIdentifier)
-	out := &bytes.Buffer{}
-	cmd.Stdout = out
-	err := cmd.Run()
-	if err != nil || strings.TrimSpace(out.String()) == "" {
-		return "", fmt.Errorf("could not find %s daemon's IP Address, are you using custom networking on your docker daemon? %s", containerIdentifier, err.Error())
-	}
-	return strings.TrimSpace(out.String()), nil
-}
-
-func ForceRemove(containerIdentifier string) error {
-	cmd := exec.Command("docker", "rm", "--force", containerIdentifier)
+//ForceRemove is a wrapper around docker rm -f (image ...)
+func ForceRemove(containerIdentifier ...string) error {
+	cmd := exec.Command("docker", append([]string{"rm", "--force"}, containerIdentifier...)...)
 	return cmd.Run()
 }

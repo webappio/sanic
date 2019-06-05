@@ -24,10 +24,11 @@ type Provisioner interface {
 	RegistryPushDefault() bool
 }
 
-var Provisioners = map[string]Provisioner{
+var provisioners = map[string]Provisioner{
 	"localdev": &localdev.ProvisionerLocalDev{},
 }
 
+//GetProvisioner returns the provisioner for the current environment
 func GetProvisioner() (Provisioner, error) {
 	s, err := shell.Current()
 	if err != nil {
@@ -49,5 +50,5 @@ func GetProvisioner() (Provisioner, error) {
 			" does not have a 'clusterProvisioners' key defined in it.")
 	}
 
-	return Provisioners[env.ClusterProvisioner], nil
+	return provisioners[env.ClusterProvisioner], nil
 }

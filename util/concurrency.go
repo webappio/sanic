@@ -34,7 +34,7 @@ func RunContextuallyInParallel(ctx context.Context, funcs ...func(context.Contex
 	}
 }
 
-//RunCmdContextually waits a given exec.Cmd "in" the given context.  There are two cases:
+//WaitCmdContextually waits for a given exec.Cmd "in" the given context.  There are two cases:
 // 1. If the command finishes before the context is finished, the result of cmd.Run is returned
 // 2. If the context is cancelled before the command finishes, the command's process is killed forcefully
 //    and this method returns immediately.

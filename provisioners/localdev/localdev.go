@@ -25,10 +25,13 @@ import (
 //  containerd to run pods
 type ProvisionerLocalDev struct{}
 
+//KubeConfigLocation : In ProvisionerLocalDev, returns kind's own generated configuration
 func (provisioner *ProvisionerLocalDev) KubeConfigLocation() string {
 	return kindContext.KubeConfigPath()
 }
 
+//EnsureCluster : In ProvisionerLocalDev, checks if kind containers are running. If not, runs kind init with cluster
+// name "sanic", then patches a registry in to allow image pulls from the .Registry() endpoint internally and externally
 func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 	clusterError := provisioner.checkCluster()
 
@@ -49,6 +52,7 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 	return err
 }
 
+//Registry : In ProvisionerLocalDev, returns sanic-control-plane container IP:RegistryNodePort
 func (provisioner *ProvisionerLocalDev) Registry() (string, error) {
 	masters, err := clusterMasterNodes()
 	if err != nil {
@@ -64,6 +68,7 @@ func (provisioner *ProvisionerLocalDev) Registry() (string, error) {
 	return fmt.Sprintf("%s:%d", ip, RegistryNodePort), nil
 }
 
+//RegistryPushDefault : localdev is pushed to by default
 func (provisioner *ProvisionerLocalDev) RegistryPushDefault() bool {
 	return true
 }

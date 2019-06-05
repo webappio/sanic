@@ -63,8 +63,8 @@ func buildOptions(serviceDir string) (*client.SolveOpt, error) {
 			{
 				Type: "image",
 				Attrs: map[string]string{
-					"name": fmt.Sprintf("%s/%s:latest", registry, filepath.Base(serviceDir)),
-					"push": "true",
+					"name":              fmt.Sprintf("%s/%s:latest", registry, filepath.Base(serviceDir)),
+					"push":              "true",
 					"registry.insecure": "true", //TODO probably shouldn't be by default
 				},
 			},

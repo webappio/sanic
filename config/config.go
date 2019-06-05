@@ -25,15 +25,16 @@ type Environment struct {
 	ClusterProvisioner string `yaml:"clusterProvisioner"`
 }
 
+//Deploy handles configuration options for templating & saving the built kubernetes .yamls
 type Deploy struct {
-	Folder string
+	Folder         string
 	TemplaterImage string `yaml:"templaterImage"`
 }
 
 //SanicConfig is the global structure of entries in sanic.yaml
 type SanicConfig struct {
 	Environments map[string]Environment
-	Deploy Deploy
+	Deploy       Deploy
 }
 
 //ReadFromPath returns a new SanicConfig from the given filesystem path to a yaml file
