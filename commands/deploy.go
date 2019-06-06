@@ -91,8 +91,14 @@ func runTemplater(folderIn, folderOut, templaterImage string) error {
 
 func kubectlApplyFolder(folder string, provisioner provisioners.Provisioner) error {
 	//TODO NOT PRODUCTION READY: --prune might be destructive
-	cmd := exec.Command("kubectl", "--kubeconfig", provisioner.KubeConfigLocation(), "apply", "-f", folder, "--prune")
-	return cmd.Run()
+	cmd := exec.Command("kubectl", "--kubeconfig", provisioner.KubeConfigLocation(), "apply", "-f", folder, "--prune", "--all")
+	stderr := &bytes.Buffer{}
+	cmd.Stderr = stderr
+	err := cmd.Run()
+	if err != nil {
+		fmt.Fprint(os.Stderr, stderr.String())
+	}
+	return err
 }
 
 func deployCommandAction(cliContext *cli.Context) error {
