@@ -83,23 +83,23 @@ func buildService(
 	buildTag string,
 ) error {
 
-	serviceName := filepath.Base(serviceDir)
-	buildInterface.StartJob(serviceName)
+	serviceID := fmt.Sprintf("%s:%s", filepath.Base(serviceDir), buildTag)
+	buildInterface.StartJob(serviceID)
 	statusChannel := make(chan *client.SolveStatus)
 	err := util.RunContextuallyInParallel(
 		ctx,
 		func(ctx context.Context) error {
 			buildkitClient, err := client.New(ctx, build.BuildkitDaemonAddr, client.WithFailFast())
 			if err != nil {
-				buildInterface.FailJob(serviceName, err)
-				buildLogger.Log(serviceName, time.Now(), "Could not connect to build daemon! ", err.Error())
+				buildInterface.FailJob(serviceID, err)
+				buildLogger.Log(serviceID, time.Now(), "Could not connect to build daemon! ", err.Error())
 				return err
 			}
-			buildLogger.Log(serviceName, time.Now(), "Starting build of ", serviceDir)
+			buildLogger.Log(serviceID, time.Now(), "Starting build of ", serviceDir)
 			buildOpts, err := buildOptions(serviceDir, buildTag)
 			if err != nil {
-				buildInterface.FailJob(serviceName, err)
-				buildLogger.Log(serviceName, time.Now(), "Could not resolve build options (e.g., where to push to)!", err.Error())
+				buildInterface.FailJob(serviceID, err)
+				buildLogger.Log(serviceID, time.Now(), "Could not resolve build options (e.g., where to push to)!", err.Error())
 				return err
 			}
 			solveStatus, err := buildkitClient.Build(ctx, *buildOpts, "", dockerfile.Build, statusChannel)
@@ -107,11 +107,11 @@ func buildService(
 				//TODO if this is null should print a warning that we failed to push
 				//e.g., when we haven't deployed yet
 				for k, v := range solveStatus.ExporterResponse {
-					buildLogger.Log(serviceName, time.Now(), fmt.Sprintf("exporter: %s=%s", k, v))
+					buildLogger.Log(serviceID, time.Now(), fmt.Sprintf("exporter: %s=%s", k, v))
 				}
 			}
 			if err != nil {
-				buildLogger.Log(serviceName, time.Now(), "FAILED: ", err.Error())
+				buildLogger.Log(serviceID, time.Now(), "FAILED: ", err.Error())
 			}
 			return err
 		},
@@ -124,7 +124,7 @@ func buildService(
 					if !ok {
 						return nil
 					}
-					logErr := buildLogger.ProcessStatus(serviceName, status)
+					logErr := buildLogger.ProcessStatus(serviceID, status)
 					if logErr != nil {
 						fmt.Fprintln(os.Stderr, logErr.Error())
 					}
@@ -134,11 +134,11 @@ func buildService(
 	)
 
 	if err == nil {
-		buildLogger.Log(serviceName, time.Now(), "Build succeeded!")
-		buildInterface.SucceedJob(serviceName)
+		buildInterface.SucceedJob(serviceID)
+		buildLogger.Log(serviceID, time.Now(), "Build succeeded!")
 	} else if err != context.Canceled {
-		buildInterface.FailJob(serviceName, err)
-		buildLogger.Log(serviceName, time.Now(), "Build failed! ", err.Error())
+		buildInterface.FailJob(serviceID, err)
+		buildLogger.Log(serviceID, time.Now(), "Build failed! ", err.Error())
 	}
 	return err
 }
