@@ -18,7 +18,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 10
       containers:
-      - image: {{getenv "REGISTRY_HOST" "missing"}}/redis:latest
+      - image: {{getenv "REGISTRY_HOST"}}/redis:{{getenv "IMAGE_TAG"}}
         name: redis
         ports:
         - name: redis
@@ -56,7 +56,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 10
       containers:
-      - image: {{getenv "REGISTRY_HOST" "missing"}}/web:latest
+      - image: {{getenv "REGISTRY_HOST"}}/web:{{getenv "IMAGE_TAG"}}
         name: web
         ports:
         - name: http
@@ -94,7 +94,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 10
       containers:
-      - image: {{getenv "REGISTRY_HOST" "missing"}}/api:latest
+      - image: {{getenv "REGISTRY_HOST"}}/api:{{getenv "IMAGE_TAG"}}
         name: api
         ports:
         - name: http

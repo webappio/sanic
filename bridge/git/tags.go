@@ -100,6 +100,6 @@ func GetCurrentTreeHash(rootDir string, unstagedFiles ...string) (string, error)
 		fmt.Fprint(os.Stderr, stderr.String())
 		return "", err
 	}
-	return strings.TrimSpace(stdout.String()), nil
+	return strings.TrimSpace(stdout.String())[:12], nil
 
 }

@@ -16,20 +16,6 @@ import (
 	"time"
 )
 
-func findServices(path string) ([]string, error) {
-	var ret []string
-
-	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-		if info.Name() == "Dockerfile" {
-			ret = append(ret, filepath.Dir(path))
-		}
-
-		return nil
-	})
-
-	return ret, err
-}
-
 func createBuildInterface(forceNoninteractive bool) build.Interface {
 	if !forceNoninteractive {
 		interactiveInterface, err := build.NewInteractiveInterface()
@@ -151,7 +137,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
-	services, err := findServices(s.GetSanicRoot())
+	services, err := util.FindServices()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
@@ -183,7 +169,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 				buildInterface,
 				buildLogger,
 				finalServiceDir,
-				buildTag[:12],
+				buildTag,
 			)
 		})
 	}

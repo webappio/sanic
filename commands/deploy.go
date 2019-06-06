@@ -3,9 +3,11 @@ package commands
 import (
 	"bytes"
 	"fmt"
+	"github.com/distributed-containers-inc/sanic/bridge/git"
 	"github.com/distributed-containers-inc/sanic/config"
 	"github.com/distributed-containers-inc/sanic/provisioners"
 	"github.com/distributed-containers-inc/sanic/shell"
+	"github.com/distributed-containers-inc/sanic/util"
 	"github.com/urfave/cli"
 	"io/ioutil"
 	"os"
@@ -42,17 +44,27 @@ func runTemplater(folderIn, folderOut, templaterImage string) error {
 		return err
 	}
 
-	err = clearYamlsFromDir(folderOut)
+	services, err := util.FindServices()
 	if err != nil {
 		return err
 	}
 
+	buildTag, err := git.GetCurrentTreeHash(shl.GetSanicRoot(), services...)
+	if err != nil {
+		return err
+	}
+
+	err = clearYamlsFromDir(folderOut)
+	if err != nil {
+		return err
+	}
 
 	tempFolderOut, err := ioutil.TempDir("", "sanicdeploy")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tempFolderOut)
+
 
 	cmd := exec.Command(
 		"docker",
@@ -62,6 +74,7 @@ func runTemplater(folderIn, folderOut, templaterImage string) error {
 		"-v", tempFolderOut+"/:/out",
 		"-e", "SANIC_ENV="+shl.GetSanicEnvironment(),
 		"-e", "REGISTRY_HOST="+registry,
+		"-e", "IMAGE_TAG="+buildTag,
 		templaterImage,
 	)
 	stderrBuffer := &bytes.Buffer{}
@@ -93,9 +106,12 @@ func kubectlApplyFolder(folder string, provisioner provisioners.Provisioner) err
 	//TODO NOT PRODUCTION READY: --prune might be destructive
 	cmd := exec.Command("kubectl", "--kubeconfig", provisioner.KubeConfigLocation(), "apply", "-f", folder, "--prune", "--all")
 	stderr := &bytes.Buffer{}
-	cmd.Stderr = stderr
+	stdout := &bytes.Buffer{}
+	cmd.Stdout = stdout
 	err := cmd.Run()
-	if err != nil {
+	if err == nil {
+		fmt.Print(stdout.String())
+	} else {
 		fmt.Fprint(os.Stderr, stderr.String())
 	}
 	return err
@@ -134,7 +150,7 @@ func deployCommandAction(cliContext *cli.Context) error {
 	}
 	err = kubectlApplyFolder(folderOut, provisioner)
 	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
+		return cli.NewExitError(fmt.Sprintf("could not apply templates in %s: %s", folderOut, err.Error()), 1)
 	}
 	return nil
 }
