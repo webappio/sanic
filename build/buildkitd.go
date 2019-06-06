@@ -3,7 +3,7 @@ package build
 import (
 	"bytes"
 	"fmt"
-	"github.com/distributed-containers-inc/sanic/dockerbridge"
+	"github.com/distributed-containers-inc/sanic/bridge/docker"
 	"os/exec"
 	"time"
 )
@@ -16,14 +16,14 @@ const BuildkitDaemonAddr = "tcp://127.0.0.1:31652"
 
 //EnsureBuildkitDaemon makes sure that the buildkit docker container named "sanic-buildkitd" is running
 func EnsureBuildkitDaemon() error {
-	running, err := dockerbridge.CheckRunning(BuildkitDaemonContainerName)
+	running, err := containers.CheckRunning(BuildkitDaemonContainerName)
 	if err != nil {
 		return err
 	}
 	if running {
 		return nil
 	}
-	dockerbridge.ForceRemove(BuildkitDaemonContainerName) //ignore error intentionally
+	containers.ForceRemove(BuildkitDaemonContainerName) //ignore error intentionally
 	stderr := &bytes.Buffer{}
 	cmd := exec.Command("docker",
 		"run", "-d",

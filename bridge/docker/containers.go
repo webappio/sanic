@@ -1,4 +1,4 @@
-package dockerbridge
+package containers
 
 import (
 	"bytes"
