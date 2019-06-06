@@ -47,7 +47,7 @@ func GetProvisioner() (Provisioner, error) {
 
 	if env.ClusterProvisioner == "" {
 		return nil, errors.New("the environment " + s.GetSanicEnvironment() +
-			" does not have a 'clusterProvisioner' key defined in it.")
+			" does not have a 'clusterProvisioner' key defined in it. Try clusterProvisioner: localdev to start.")
 	}
 
 	return provisioners[env.ClusterProvisioner], nil
