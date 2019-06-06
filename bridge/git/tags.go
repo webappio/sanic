@@ -3,6 +3,7 @@ package git
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -35,18 +36,70 @@ func GetCurrentTag(dir string) (string, error) {
 	return "", err
 }
 
-//GetCurrentShortHash returns the short hash (i.e., 7 char prefix of current commit) of the git repository
-// in the specified directory. It returns an error if the hash cannot be calculated for any reason
-func GetCurrentShortHash(dir string) (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--short", "HEAD")
+//GetGitRoot returns the directory which contains the .git folder
+func GetGitRoot(dir string) (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	cmd.Dir = dir
 	cmd.Stdout = stdout
 	err := cmd.Run()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, stderr.String())
-		return "", fmt.Errorf("could not get the commit hash. Is git installed, and have you committed? %s", err.Error())
+		fmt.Fprint(os.Stderr, stderr.String())
+		return "", fmt.Errorf("could not get the git directory. Is git installed and setup? %s", err.Error())
 	}
 	return strings.TrimSpace(stdout.String()), nil
+}
+
+//GetCurrentTreeHash returns a hash of the git repository, consisting of the currently
+//commited files, as well as any unstaged changes in the provided directories
+func GetCurrentTreeHash(rootDir string, unstagedFiles ...string) (string, error) {
+	rootDir, err := GetGitRoot(rootDir)
+	if err != nil {
+		return "", err
+	}
+
+	tmpindex, err := ioutil.TempFile("", "sanicindex")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(tmpindex.Name())
+
+	//See http://web.archive.org/web/20190606210911/https://stackoverflow.com/questions/23816330/compute-git-hash-of-all-uncommitted-code
+	currIndexData, err := ioutil.ReadFile(rootDir + "/.git/index")
+	if err != nil {
+		return "", err
+	}
+	_, err = tmpindex.Write(currIndexData)
+	if err != nil {
+		return "", err
+	}
+
+	stderr := &bytes.Buffer{}
+
+	cmd := exec.Command("git", append([]string{"add", "-A"}, unstagedFiles...)...)
+	cmd.Dir = rootDir
+	cmd.Env = append(os.Environ(), "GIT_INDEX_FILE="+tmpindex.Name())
+	cmd.Stderr = stderr
+	err = cmd.Run()
+	if err != nil {
+		fmt.Fprint(os.Stderr, stderr.String())
+		return "", err
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr = &bytes.Buffer{}
+
+	cmd = exec.Command("git", "write-tree")
+	cmd.Dir = rootDir
+	cmd.Env = append(os.Environ(), "GIT_INDEX_FILE="+tmpindex.Name())
+	cmd.Stderr = stderr
+	cmd.Stdout = stdout
+	err = cmd.Run()
+	if err != nil {
+		fmt.Fprint(os.Stderr, stderr.String())
+		return "", err
+	}
+	return strings.TrimSpace(stdout.String()), nil
+
 }

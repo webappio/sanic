@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"github.com/distributed-containers-inc/sanic/bridge/git"
 	"github.com/distributed-containers-inc/sanic/build"
 	"github.com/distributed-containers-inc/sanic/provisioners"
 	"github.com/distributed-containers-inc/sanic/shell"
@@ -40,7 +41,7 @@ func createBuildInterface(forceNoninteractive bool) build.Interface {
 	return build.NewPlaintextInterface()
 }
 
-func buildOptions(serviceDir string) (*client.SolveOpt, error) {
+func buildOptions(serviceDir, buildTag string) (*client.SolveOpt, error) {
 	provisioner, err := provisioners.GetProvisioner()
 
 	if err != nil {
@@ -63,7 +64,7 @@ func buildOptions(serviceDir string) (*client.SolveOpt, error) {
 			{
 				Type: "image",
 				Attrs: map[string]string{
-					"name":              fmt.Sprintf("%s/%s:latest", registry, filepath.Base(serviceDir)),
+					"name":              fmt.Sprintf("%s/%s:%s", registry, filepath.Base(serviceDir), buildTag),
 					"push":              "true",
 					"registry.insecure": "true", //TODO probably shouldn't be by default
 				},
@@ -79,6 +80,7 @@ func buildService(
 	buildInterface build.Interface,
 	buildLogger build.Logger,
 	serviceDir string,
+	buildTag string,
 ) error {
 
 	serviceName := filepath.Base(serviceDir)
@@ -94,7 +96,7 @@ func buildService(
 				return err
 			}
 			buildLogger.Log(serviceName, time.Now(), "Starting build of ", serviceDir)
-			buildOpts, err := buildOptions(serviceDir)
+			buildOpts, err := buildOptions(serviceDir, buildTag)
 			if err != nil {
 				buildInterface.FailJob(serviceName, err)
 				buildLogger.Log(serviceName, time.Now(), "Could not resolve build options (e.g., where to push to)!", err.Error())
@@ -159,6 +161,11 @@ func buildCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
+	buildTag, err := git.GetCurrentTreeHash(s.GetSanicRoot(), services...)
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
+
 	buildInterface := createBuildInterface(cliContext.Bool("plaintext"))
 	defer buildInterface.Close()
 
@@ -176,6 +183,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 				buildInterface,
 				buildLogger,
 				finalServiceDir,
+				buildTag[:12],
 			)
 		})
 	}
