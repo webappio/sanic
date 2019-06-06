@@ -44,7 +44,11 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 	if err != nil {
 		return err
 	}
-	err = util.RunContextuallyInParallel(context.Background(), provisioner.startRegistry, provisioner.patchRegistryContainers)
+	err = util.RunContextuallyInParallel(context.Background(),
+		provisioner.startRegistry,
+		provisioner.patchRegistryContainers,
+		provisioner.startIngressController,
+	)
 	if err != nil {
 		return fmt.Errorf("error while starting or configuring registry: %s", err.Error())
 	}
