@@ -21,7 +21,7 @@ require (
 	github.com/coreos/etcd v3.3.13+incompatible // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/dgryski/go-sip13 v0.0.0-20190329191031-25c5027a8c7b // indirect
-	github.com/docker/cli v0.0.0-20190529200812-c02f389c787f
+	github.com/docker/cli v0.0.0-20190606130810-2ec7306491c5
 	github.com/docker/docker v1.14.0-0.20190319215453-e7b5f7dbe98c
 	github.com/docker/docker-credential-helpers v0.6.2 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -90,11 +90,11 @@ require (
 	golang.org/x/net v0.0.0-20190603091049-60506f45cf65 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
-	golang.org/x/sys v0.0.0-20190602015325-4c4f7f33c9ed // indirect
-	golang.org/x/tools v0.0.0-20190603231351-8aaa1484dc10 // indirect
-	gonum.org/v1/gonum v0.0.0-20190602094245-c4a599f7b712 // indirect
+	golang.org/x/sys v0.0.0-20190606165138-5da285871e9c // indirect
+	golang.org/x/tools v0.0.0-20190606124116-d0a3d012864b // indirect
+	gonum.org/v1/gonum v0.0.0-20190606121551-14af50e936aa // indirect
 	google.golang.org/appengine v1.6.0 // indirect
-	google.golang.org/genproto v0.0.0-20190530194941-fb225487d101 // indirect
+	google.golang.org/genproto v0.0.0-20190605220351-eb0b1bdb6ae6 // indirect
 	google.golang.org/grpc v1.21.1 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 	honnef.co/go/tools v0.0.0-20190605142022-0a11fc526260 // indirect
