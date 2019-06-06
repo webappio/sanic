@@ -76,10 +76,16 @@ spec:
         name: traefik-ingress-lb
     spec:
       serviceAccountName: traefik-ingress-controller
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: 10
       hostNetwork: true
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
       containers:
-      - image: traefik
+      - image: traefik:v1.7.12
         name: traefik-ingress-lb
         ports:
         - name: http

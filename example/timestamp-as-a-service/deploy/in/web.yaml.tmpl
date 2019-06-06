@@ -2,6 +2,44 @@
 kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
+  name: redis
+  labels:
+    k8s-app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: redis
+  template:
+    metadata:
+      labels:
+        k8s-app: redis
+        name: redis
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - image: {{getenv "REGISTRY_HOST" "missing"}}/redis:latest
+        name: redis
+        ports:
+        - name: redis
+          containerPort: 6379
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: redis
+spec:
+  selector:
+    k8s-app: redis
+  ports:
+  - protocol: TCP
+    port: 6379
+
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
   name: web
   labels:
     k8s-app: web
@@ -37,12 +75,50 @@ spec:
     port: 80
 
 ---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: api
+  labels:
+    k8s-app: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: api
+  template:
+    metadata:
+      labels:
+        k8s-app: api
+        name: api
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - image: {{getenv "REGISTRY_HOST" "missing"}}/api:latest
+        name: api
+        ports:
+        - name: http
+          containerPort: 80
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: api
+spec:
+  selector:
+    k8s-app: api
+  ports:
+  - protocol: TCP
+    port: 80
+
+---
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: web
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    traefik.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
   - http:
@@ -50,4 +126,8 @@ spec:
       - path: /
         backend:
           serviceName: web
+          servicePort: 80
+      - path: /api
+        backend:
+          serviceName: api
           servicePort: 80

@@ -34,7 +34,7 @@ spec:
         k8s-app: sanic-registry
         name: sanic-registry
     spec:
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: 10
       hostNetwork: true
       nodeSelector:
         node-role.kubernetes.io/master: ""

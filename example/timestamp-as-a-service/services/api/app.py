@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import Flask
+from flask import Flask, jsonify
 from redis import Redis
 
 app = Flask(__name__)
@@ -11,13 +11,13 @@ redis = Redis(host='redis', retry_on_timeout=True)
 def create_timestamp():
     timestamp = datetime.now().isoformat()
     timestamp_id = redis.incr('TIMESTAMP_ID')
-    redis.set('TIMESTAMP_{}'.format(timestamp_id), repr(timestamp))
-    return {'timestamp': timestamp, 'id': timestamp_id}
+    redis.set('TIMESTAMP_{}'.format(timestamp_id), str(timestamp))
+    return jsonify({'timestamp': timestamp, 'id': timestamp_id})
 
 
 @app.route('/timestamp/<id>', methods=['GET'])
 def get_timestamp(id):
-    return {'timestamp': redis.get('TIMESTAMP_{}'.format(id))}
+    return jsonify({'timestamp': redis.get('TIMESTAMP_{}'.format(id)).decode('utf-8')})
 
 
 if __name__ == '__main__':

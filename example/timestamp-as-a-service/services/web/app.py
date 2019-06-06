@@ -10,7 +10,7 @@ redis = Redis(host='redis', retry_on_timeout=True)
 @app.route('/')
 def index():
     timestamp_id = redis.get('TIMESTAMP_ID') or 0
-    return render_template('index.html', timestamp=timestamp_id)
+    return render_template('index.html', timestamps=timestamp_id)
 
 
 if __name__ == '__main__':
