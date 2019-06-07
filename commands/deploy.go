@@ -10,6 +10,7 @@ import (
 	"github.com/distributed-containers-inc/sanic/util"
 	"github.com/urfave/cli"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -151,6 +152,15 @@ func deployCommandAction(cliContext *cli.Context) error {
 	if err != nil {
 		return cli.NewExitError(fmt.Sprintf("could not apply templates in %s: %s", folderOut, err.Error()), 1)
 	}
+	edgeNodes, err := provisioner.EdgeNodes()
+	if err != nil {
+		return cli.NewExitError(fmt.Sprintf("could not find edge routers: %s", err.Error()),1)
+	}
+	if len(edgeNodes) == 0 {
+		//this shouldn't happen: environment is misconfigured?
+		return cli.NewExitError("there are no edge routers in this environment. Try reprovisioning your cluster",1)
+	}
+	fmt.Printf("Configured HTTP services are available at http://%s\n", edgeNodes[rand.Intn(len(edgeNodes))])
 	return nil
 }
 

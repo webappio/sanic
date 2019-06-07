@@ -76,3 +76,19 @@ func (provisioner *ProvisionerLocalDev) Registry() (string, error) {
 func (provisioner *ProvisionerLocalDev) RegistryPushDefault() bool {
 	return true
 }
+
+func (provisioner *ProvisionerLocalDev) EdgeNodes() ([]string, error) {
+	masters, err := clusterMasterNodes()
+	if err != nil {
+		return nil, err
+	}
+	var masterIPs []string
+	for _, master := range masters {
+		ip, err := master.IP()
+		if err != nil {
+			return nil, err
+		}
+		masterIPs = append(masterIPs, ip)
+	}
+	return masterIPs, nil
+}

@@ -22,6 +22,9 @@ type Provisioner interface {
 
 	//RegistryPushDefault returns whether to push by default in this environment (opt-out) or vice-versa (opt-in)
 	RegistryPushDefault() bool
+
+	//EdgeNodes returns a list of hostnames or IP addresses that will expose the edge nodes (where the ingress controllers are hosted)
+	EdgeNodes() ([]string, error)
 }
 
 var provisioners = map[string]Provisioner{
