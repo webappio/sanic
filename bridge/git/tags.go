@@ -22,7 +22,7 @@ func GetCurrentTag(dir string) (string, error) {
 		return "", fmt.Errorf("could not get tags, is git installed? %s", err.Error())
 	}
 	err = cmd.Wait()
-	if err == nil  {
+	if err == nil {
 		tagsString := strings.TrimSpace(stdout.String())
 		spaceIdx := strings.Index(tagsString, " ")
 		if spaceIdx != -1 {

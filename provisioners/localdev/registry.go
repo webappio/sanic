@@ -91,7 +91,7 @@ func (provisioner *ProvisionerLocalDev) startRegistry(ctx context.Context) error
 	if err != nil {
 		return err
 	}
-	err = util.WaitCmdContextually(cmd, ctx)
+	err = util.WaitCmdContextually(ctx, cmd)
 	if err != nil {
 		fmt.Fprint(os.Stderr, errBuffer.String())
 	}

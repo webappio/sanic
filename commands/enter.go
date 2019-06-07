@@ -55,7 +55,7 @@ func enterCommandAction(cliContext *cli.Context) error {
 	if len(filteredPodNames) == 0 {
 		return cli.NewExitError(
 			fmt.Sprintf("there are no pods that match %s in the current namespace.", filterString),
-				1)
+			1)
 	}
 	if len(filteredPodNames) > 1 {
 		return cli.NewExitError(
@@ -71,7 +71,7 @@ func enterCommandAction(cliContext *cli.Context) error {
 }
 
 var enterCommand = cli.Command{
-	Name:            "enter",
-	Usage:           "sanic enter [pod unique name substring]",
-	Action:          enterCommandAction,
+	Name:   "enter",
+	Usage:  "sanic enter [pod unique name substring]",
+	Action: enterCommandAction,
 }

@@ -65,7 +65,6 @@ func runTemplater(folderIn, folderOut, templaterImage string) error {
 	}
 	defer os.RemoveAll(tempFolderOut)
 
-
 	cmd := exec.Command(
 		"docker",
 		"run",

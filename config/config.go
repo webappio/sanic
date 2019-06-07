@@ -51,10 +51,10 @@ func ReadFromPath(configPath string) (SanicConfig, error) {
 	}
 	for envName, env := range cfg.Environments {
 		if env.ClusterProvisioner != "localdev" && env.ClusterProvisioner != "" {
-			return SanicConfig{}, errors.New(fmt.Sprintf(
+			return SanicConfig{}, fmt.Errorf(
 				"configuration file error: environment %s's"+
 					" clusterProvisioner key must be one of 'localdev' or omitted, was: '%s'",
-				envName, env.ClusterProvisioner))
+				envName, env.ClusterProvisioner)
 		}
 	}
 	if cfg.Deploy.Folder == "" {

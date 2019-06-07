@@ -109,7 +109,7 @@ func (provisioner *ProvisionerLocalDev) startIngressController(ctx context.Conte
 	if err != nil {
 		return err
 	}
-	err = util.WaitCmdContextually(cmd, ctx)
+	err = util.WaitCmdContextually(ctx, cmd)
 	if err != nil {
 		fmt.Fprint(os.Stderr, errBuffer.String())
 	}

@@ -189,7 +189,7 @@ func (provisioner *ProvisionerLocalDev) patchRegistryContainers(ctx context.Cont
 				strings.ReplaceAll(nodeRegistryConfigPatch, `[REGISTRY]`, registry),
 			)
 			cmd.Start()
-			return util.WaitCmdContextually(cmd, ctx)
+			return util.WaitCmdContextually(ctx, cmd)
 		})
 	}
 	return util.RunContextuallyInParallel(ctx, funcs...)
@@ -213,19 +213,19 @@ func (provisioner *ProvisionerLocalDev) startCluster() error {
 
 	cfg.Nodes = []kindconfig.Node{
 		{
-			Role: kindconfig.ControlPlaneRole,
+			Role:        kindconfig.ControlPlaneRole,
 			ExtraMounts: nodeMounts,
 		},
 		{
-			Role: kindconfig.WorkerRole,
+			Role:        kindconfig.WorkerRole,
 			ExtraMounts: nodeMounts,
 		},
 		{
-			Role: kindconfig.WorkerRole,
+			Role:        kindconfig.WorkerRole,
 			ExtraMounts: nodeMounts,
 		},
 		{
-			Role: kindconfig.WorkerRole,
+			Role:        kindconfig.WorkerRole,
 			ExtraMounts: nodeMounts,
 		},
 	}
