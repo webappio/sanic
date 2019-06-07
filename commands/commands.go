@@ -6,6 +6,7 @@ import "github.com/urfave/cli"
 var Commands = []cli.Command{
 	buildCommand,
 	deployCommand,
+	enterCommand,
 	environmentCommand,
 	kubectlCommand,
 	runCommand,
