@@ -28,7 +28,6 @@ type flatfileLogger struct {
 	LogDirectory string
 
 	currVertexStatuses map[string]string
-	lastStatusLogSize  int64
 
 	openFiles        map[string]*os.File
 	logLineListeners []func(service, logLine string)
@@ -81,16 +80,12 @@ func (logger *flatfileLogger) Log(service string, when time.Time, message ...int
 	defer logger.mutex.Unlock()
 
 	messageString := strings.Trim(fmt.Sprint(message...), "\r\n")
-	numBytes, err := f.WriteString(fmt.Sprintf("[%s] %s\n", when.In(time.Local), messageString))
+	_, err = f.WriteString(fmt.Sprintf("[%s] %s\n", when.In(time.Local), messageString))
 	for _, listener := range logger.logLineListeners {
 		listener(service, messageString+"\n")
 	}
 	if err != nil {
 		return err
-	}
-	logger.lastStatusLogSize -= int64(numBytes)
-	if logger.lastStatusLogSize < 0 {
-		logger.lastStatusLogSize = 0
 	}
 	return nil
 }
@@ -113,13 +108,6 @@ func (logger *flatfileLogger) logStatus(service string, status *client.VertexSta
 	logger.mutex.Lock()
 	defer logger.mutex.Unlock()
 
-	if logger.lastStatusLogSize > 0 {
-		_, err = f.Seek(-logger.lastStatusLogSize, io.SeekEnd)
-	}
-	if err != nil {
-		return err
-	}
-
 	var idText string
 	if strings.HasPrefix(status.ID, "sha256:") {
 		idText = status.ID[7:19]
@@ -130,14 +118,14 @@ func (logger *flatfileLogger) logStatus(service string, status *client.VertexSta
 	var statusText string
 	if status.Total != 0 {
 		statusText = fmt.Sprintf("%s %s/%s", idText, humanReadableBytes(status.Current), humanReadableBytes(status.Total))
-	}  else {
+	} else {
 		statusText = fmt.Sprintf("%s %s", idText, humanReadableBytes(status.Current))
 	}
 	statusTextTimestamp := fmt.Sprintf("[%s]: %s", status.Timestamp.In(time.Local), statusText)
 
 	if status.Completed != nil {
 		delete(logger.currVertexStatuses, status.ID)
-		_, err = f.WriteString(statusTextTimestamp+"\n")
+		_, err = f.WriteString(statusTextTimestamp + "\n")
 	} else {
 		logger.currVertexStatuses[status.ID] = statusTextTimestamp
 	}
@@ -150,7 +138,10 @@ func (logger *flatfileLogger) logStatus(service string, status *client.VertexSta
 	if err != nil {
 		return err
 	}
-	logger.lastStatusLogSize = int64(written)
+	_, err = f.Seek(-int64(written), io.SeekCurrent)
+	if err != nil {
+		return err
+	}
 	for _, listener := range logger.logLineListeners {
 		if len(statuses) > 0 {
 			statusText = statuses[len(statuses)-1]
