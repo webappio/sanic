@@ -6,15 +6,12 @@ import (
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/util"
 	"golang.org/x/sync/errgroup"
-	"os"
 	"os/exec"
-	"os/user"
 	"sigs.k8s.io/kind/pkg/cluster"
 	kindconfig "sigs.k8s.io/kind/pkg/cluster/config"
 	"sigs.k8s.io/kind/pkg/cluster/config/encoding"
 	"sigs.k8s.io/kind/pkg/cluster/create"
 	kindnode "sigs.k8s.io/kind/pkg/cluster/nodes"
-	"sigs.k8s.io/kind/pkg/container/cri"
 	"strings"
 	"time"
 )
@@ -197,27 +194,10 @@ func (provisioner *ProvisionerLocalDev) patchRegistryContainers(ctx context.Cont
 }
 
 func (provisioner *ProvisionerLocalDev) startCluster() error {
-	usr, err := user.Current()
-	if err != nil {
-		return fmt.Errorf("could not find your home directory: %s", err.Error())
-	}
-
 	cfg := kindconfig.Cluster{}
 	encoding.Scheme.Default(&cfg)
-	nodeMounts := []cri.Mount{
-		{
-			ContainerPath: "/hosthome",
-			HostPath:      usr.HomeDir,
-			Readonly:      true,
-		},
-	}
-	if _, err := os.Stat("/mnt"); err == nil {
-		nodeMounts = append(nodeMounts, cri.Mount{
-			ContainerPath: "/mnt",
-			HostPath: "/mnt",
-			Readonly: true,
-		})
-	}
+
+	nodeMounts := provisioner.liveMounts()
 
 	cfg.Nodes = []kindconfig.Node{
 		{
