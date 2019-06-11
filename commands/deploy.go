@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 func clearYamlsFromDir(folderOut string) error {
@@ -28,6 +29,38 @@ func clearYamlsFromDir(folderOut string) error {
 		}
 	}
 	return nil
+}
+
+func projectDirEnvVar(projectRoot string) string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not find your home directory, live-mounting will not work: %s\n", err.Error())
+		return "PROJECT_DIR=<error: no home folder>"
+	}
+
+	homeDir, err = filepath.EvalSymlinks(homeDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not evaluate symlinks in your home directory, live-mounting will not work: %s\n", err.Error())
+		return "PROJET_DIR=<error: home symlink resolution>"
+	}
+
+	projectRoot, err = filepath.EvalSymlinks(projectRoot)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not evaluate symlinks on the path to the project root, live-mounting will not work: %s\n", err.Error())
+		return "PROJET_DIR=<error: project root symlink resolution>"
+	}
+
+	if strings.HasPrefix(projectRoot, homeDir) {
+		sourceDirRelHome, err := filepath.Rel(homeDir, projectRoot)
+		if err != nil {
+			//shouldn't happen: homeDir is absolute
+			panic(err)
+		}
+		return "PROJECT_DIR=/hosthome/"+sourceDirRelHome
+	}
+
+	fmt.Fprintf(os.Stderr, "Warning: Your project is in %s, which is not in your home folder %s: Live mounting will not work.\n", shl.GetSanicRoot(), homeDir)
+	return "PROJECT_DIR=project_source_is_not_in_home"
 }
 
 func runTemplater(folderIn, folderOut, templaterImage string) error {
@@ -75,6 +108,7 @@ func runTemplater(folderIn, folderOut, templaterImage string) error {
 		"-e", "SANIC_ENV="+shl.GetSanicEnvironment(),
 		"-e", "REGISTRY_HOST="+registry,
 		"-e", "IMAGE_TAG="+buildTag,
+		"-e", projectDirEnvVar(shl.GetSanicRoot()),
 		templaterImage,
 	)
 	stderrBuffer := &bytes.Buffer{}
@@ -154,11 +188,11 @@ func deployCommandAction(cliContext *cli.Context) error {
 	}
 	edgeNodes, err := provisioner.EdgeNodes()
 	if err != nil {
-		return cli.NewExitError(fmt.Sprintf("could not find edge routers: %s", err.Error()),1)
+		return cli.NewExitError(fmt.Sprintf("could not find edge routers: %s", err.Error()), 1)
 	}
 	if len(edgeNodes) == 0 {
 		//this shouldn't happen: environment is misconfigured?
-		return cli.NewExitError("there are no edge routers in this environment. Try reprovisioning your cluster",1)
+		return cli.NewExitError("there are no edge routers in this environment. Try reprovisioning your cluster", 1)
 	}
 	fmt.Printf("Configured HTTP services are available at http://%s\n", edgeNodes[rand.Intn(len(edgeNodes))])
 	return nil

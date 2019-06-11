@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/util"
 	"golang.org/x/sync/errgroup"
+	"os"
 	"os/exec"
 	"os/user"
 	"sigs.k8s.io/kind/pkg/cluster"
@@ -209,6 +210,13 @@ func (provisioner *ProvisionerLocalDev) startCluster() error {
 			HostPath:      usr.HomeDir,
 			Readonly:      true,
 		},
+	}
+	if _, err := os.Stat("/mnt"); err == nil {
+		nodeMounts = append(nodeMounts, cri.Mount{
+			ContainerPath: "/mnt",
+			HostPath: "/mnt",
+			Readonly: true,
+		})
 	}
 
 	cfg.Nodes = []kindconfig.Node{
