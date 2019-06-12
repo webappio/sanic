@@ -19,7 +19,7 @@ type Shell interface {
 	Exec(requestedCommand []string) (errorCode int, err error)
 
 	//Execute the given command in "Shell mode", i.e., allowing spaces
-	ShellExec(requestedCommand string) (errorCode int, err error)
+	ShellExec(requestedCommand string, args []string) (errorCode int, err error)
 
 	//If "sanic env dev", return "dev"
 	GetSanicEnvironment() string

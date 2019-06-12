@@ -136,8 +136,8 @@ func (shell *BashShell) Exec(requestedCommand []string) (errorCode int, err erro
 }
 
 //ShellExec : execute the given shell command (i.e., including spaces) in the given environment
-func (shell *BashShell) ShellExec(requestedCommand string) (errorCode int, err error) {
-	cmd := exec.Command(shell.Path, "-c", requestedCommand)
+func (shell *BashShell) ShellExec(requestedCommand string, args []string) (errorCode int, err error) {
+	cmd := exec.Command(shell.Path, append([]string{"-c", requestedCommand, "dummy"}, args...)...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin

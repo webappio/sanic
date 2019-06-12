@@ -29,7 +29,7 @@ func runCommandAction(c *cli.Context) error {
 	commandName := c.Args().First()
 	for _, command := range env.Commands {
 		if command.Name == commandName {
-			code, err := s.ShellExec(command.Command)
+			code, err := s.ShellExec(command.Command, c.Args().Tail())
 			if code == 0 {
 				return nil
 			}
@@ -44,4 +44,6 @@ var runCommand = cli.Command{
 	Name:   "run",
 	Usage:  "run a configured script in the configuration",
 	Action: runCommandAction,
+	SkipArgReorder: true,
+	SkipFlagParsing: true,
 }
