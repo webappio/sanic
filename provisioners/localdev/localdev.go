@@ -69,12 +69,7 @@ func (provisioner *ProvisionerLocalDev) Registry() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s:%d", ip, RegistryNodePort), nil
-}
-
-//RegistryPushDefault : localdev is pushed to by default
-func (provisioner *ProvisionerLocalDev) RegistryPushDefault() bool {
-	return true
+	return fmt.Sprintf("http://%s:%d", ip, RegistryNodePort), nil
 }
 
 func (provisioner *ProvisionerLocalDev) EdgeNodes() ([]string, error) {

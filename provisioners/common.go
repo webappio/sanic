@@ -17,11 +17,9 @@ type Provisioner interface {
 	//Note: it might not necessarily exist
 	KubeConfigLocation() string
 
-	//Registry returns the registry to push to, e.g., registry.example.com:3000, or "" if none is defined
+	//Registry returns the registry to push to, e.g., http://registry.example.com:3000, or "" if none is defined
+	//Note: it must start with http:// or https://
 	Registry() (string, error)
-
-	//RegistryPushDefault returns whether to push by default in this environment (opt-out) or vice-versa (opt-in)
-	RegistryPushDefault() bool
 
 	//EdgeNodes returns a list of hostnames or IP addresses that will expose the edge nodes (where the ingress controllers are hosted)
 	EdgeNodes() ([]string, error)

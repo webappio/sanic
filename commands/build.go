@@ -11,8 +11,11 @@ import (
 	"github.com/moby/buildkit/client"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	"github.com/urfave/cli"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -27,13 +30,7 @@ func createBuildInterface(forceNoninteractive bool) build.Interface {
 	return build.NewPlaintextInterface()
 }
 
-func buildOptions(serviceDir, buildTag string) (*client.SolveOpt, error) {
-	provisioner, err := provisioners.GetProvisioner()
-
-	if err != nil {
-		return nil, err
-	}
-
+func buildOptions(serviceDir string) *client.SolveOpt {
 	solveOpt := &client.SolveOpt{
 		LocalDirs: map[string]string{
 			"context":    serviceDir,
@@ -41,24 +38,54 @@ func buildOptions(serviceDir, buildTag string) (*client.SolveOpt, error) {
 		},
 	}
 
-	if provisioner.RegistryPushDefault() {
-		registry, err := provisioner.Registry()
-		if err != nil {
-			return nil, err
-		}
-		solveOpt.Exports = []client.ExportEntry{
+	return solveOpt
+}
+
+func exportEntries(serviceName, buildTag string, push bool, writer io.WriteCloser) ([]client.ExportEntry, error) {
+	provisioner, err := provisioners.GetProvisioner()
+
+	if err != nil {
+		return nil, err
+	}
+
+	registry, err := provisioner.Registry()
+	if err != nil {
+		return nil, err
+	}
+	insecure := "false"
+	if strings.HasPrefix(registry, "http://") {
+		insecure = "true"
+		registry = registry[len("http://"):]
+	} else if strings.HasPrefix(registry, "https://") {
+		registry = registry[len("https://"):]
+	} else {
+		return nil, fmt.Errorf("Registry must start with 'http://' or 'https://', got '%s'", registry)
+	}
+	fullImageName := fmt.Sprintf("%s/%s:%s", registry, serviceName, buildTag)
+
+
+	if push {
+		return []client.ExportEntry{
 			{
 				Type: "image",
 				Attrs: map[string]string{
-					"name":              fmt.Sprintf("%s/%s:%s", registry, filepath.Base(serviceDir), buildTag),
+					"name":              fullImageName,
 					"push":              "true",
-					"registry.insecure": "true", //TODO probably shouldn't be by default
+					"registry.insecure": insecure,
 				},
 			},
-		}
+		}, nil
+	} else {
+		return []client.ExportEntry{
+			{
+				Type: "docker",
+				Attrs: map[string]string{
+					"name": fullImageName,
+				},
+				Output: writer,
+			},
+		}, nil
 	}
-
-	return solveOpt, nil
 }
 
 func buildService(
@@ -67,12 +94,31 @@ func buildService(
 	buildLogger build.Logger,
 	serviceDir string,
 	buildTag string,
+	cliContext *cli.Context,
 ) error {
 
-	serviceID := fmt.Sprintf("%s:%s", filepath.Base(serviceDir), buildTag)
+	serviceName := filepath.Base(serviceDir)
+	serviceID := fmt.Sprintf("%s:%s", serviceName, buildTag)
 	buildInterface.StartJob(serviceID)
 	statusChannel := make(chan *client.SolveStatus)
-	err := util.RunContextuallyInParallel(
+
+	push := cliContext.Bool("push")
+
+	buildOpts := buildOptions(serviceDir)
+	var resultR *io.PipeReader
+	var resultW *io.PipeWriter
+	var err error
+	if !push {
+		resultR, resultW = io.Pipe()
+	}
+	buildOpts.Exports, err = exportEntries(serviceName, buildTag, push, resultW)
+	if err != nil {
+		buildInterface.FailJob(serviceID, err)
+		buildLogger.Log(serviceID, time.Now(), "Could not configure pushing / saving for image! ", err.Error())
+		return err
+	}
+
+	err = util.RunContextuallyInParallel(
 		ctx,
 		func(ctx context.Context) error {
 			buildkitClient, err := client.New(ctx, build.BuildkitDaemonAddr, client.WithFailFast())
@@ -82,12 +128,6 @@ func buildService(
 				return err
 			}
 			buildLogger.Log(serviceID, time.Now(), "Starting build of ", serviceDir)
-			buildOpts, err := buildOptions(serviceDir, buildTag)
-			if err != nil {
-				buildInterface.FailJob(serviceID, err)
-				buildLogger.Log(serviceID, time.Now(), "Could not resolve build options (e.g., where to push to)!", err.Error())
-				return err
-			}
 			solveStatus, err := buildkitClient.Build(ctx, *buildOpts, "", dockerfile.Build, statusChannel)
 			if solveStatus != nil {
 				//TODO if this is null should print a warning that we failed to push
@@ -100,6 +140,20 @@ func buildService(
 				buildLogger.Log(serviceID, time.Now(), "FAILED: ", err.Error())
 			}
 			return err
+		},
+		func(ctx context.Context) error {
+			//Load the built service into the docker engine
+			if !push {
+				cmd := exec.Command("docker", "load")
+				cmd.Stdin = resultR
+				if err = cmd.Start(); err != nil {
+					return err
+				}
+				err = util.WaitCmdContextually(ctx, cmd)
+				resultR.CloseWithError(err)
+				return err
+			}
+			return nil
 		},
 		func(ctx context.Context) error {
 			for {
@@ -170,6 +224,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 				buildLogger,
 				finalServiceDir,
 				buildTag,
+				cliContext,
 			)
 		})
 	}
@@ -201,6 +256,10 @@ var buildCommand = cli.Command{
 			Name:   "plaintext",
 			Usage:  "use a plaintext interface",
 			EnvVar: "PLAINTEXT_INTERFACE",
+		},
+		cli.BoolFlag{
+			Name:  "push",
+			Usage: "pushes to the configured registry for the current environment instead of loading locally",
 		},
 	},
 }

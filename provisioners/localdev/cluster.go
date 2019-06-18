@@ -176,6 +176,10 @@ func (provisioner *ProvisionerLocalDev) patchRegistryContainers(ctx context.Cont
 	if err != nil {
 		return err
 	}
+	if !strings.HasPrefix(registry, "http://") {
+		panic(fmt.Errorf("expected localdev registry to start with http://, got %s", registry))
+	}
+	registry = registry[len("http://"):]
 
 	var funcs []func(context.Context) error
 	for _, node := range nodes {

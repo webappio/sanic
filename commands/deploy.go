@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 func clearYamlsFromDir(folderOut string) error {
@@ -40,9 +41,17 @@ func runTemplater(folderIn, folderOut, templaterImage string) error {
 	if err != nil {
 		return err
 	}
+
 	registry, err := provisioner.Registry()
 	if err != nil {
 		return err
+	}
+	if strings.HasPrefix(registry, "http://") {
+		registry = registry[len("http://"):]
+	} else if strings.HasPrefix(registry, "https://") {
+		registry = registry[len("https://"):]
+	} else {
+		panic(fmt.Errorf("Got an invalid value for registry, expected it to start with http or https: %s", registry))
 	}
 
 	services, err := util.FindServices()
