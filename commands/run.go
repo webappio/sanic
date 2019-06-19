@@ -41,9 +41,9 @@ func runCommandAction(c *cli.Context) error {
 }
 
 var runCommand = cli.Command{
-	Name:   "run",
-	Usage:  "run a configured script in the configuration",
-	Action: runCommandAction,
-	SkipArgReorder: true,
+	Name:            "run",
+	Usage:           "run a configured script in the configuration",
+	Action:          runCommandAction,
+	SkipArgReorder:  true,
 	SkipFlagParsing: true,
 }

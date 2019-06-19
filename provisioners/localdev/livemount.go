@@ -35,6 +35,8 @@ func (provisioner *ProvisionerLocalDev) liveMounts() []cri.Mount {
 	return liveMounts
 }
 
+//InClusterDir returns a path relative to the mounts in the liveMounts() function above.
+//For example, /home/(your username)/projects/sanic -> /hosthome/projects/sanic
 func (provisioner *ProvisionerLocalDev) InClusterDir(hostDir string) string {
 	hostDir, err := filepath.EvalSymlinks(hostDir)
 	if err != nil {

@@ -63,7 +63,6 @@ func exportEntries(serviceName, buildTag string, push bool, writer io.WriteClose
 	}
 	fullImageName := fmt.Sprintf("%s/%s:%s", registry, serviceName, buildTag)
 
-
 	if push {
 		return []client.ExportEntry{
 			{
@@ -75,17 +74,16 @@ func exportEntries(serviceName, buildTag string, push bool, writer io.WriteClose
 				},
 			},
 		}, nil
-	} else {
-		return []client.ExportEntry{
-			{
-				Type: "docker",
-				Attrs: map[string]string{
-					"name": fullImageName,
-				},
-				Output: writer,
-			},
-		}, nil
 	}
+	return []client.ExportEntry{
+		{
+			Type: "docker",
+			Attrs: map[string]string{
+				"name": fullImageName,
+			},
+			Output: writer,
+		},
+	}, nil
 }
 
 func buildService(

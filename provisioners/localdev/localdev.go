@@ -72,6 +72,7 @@ func (provisioner *ProvisionerLocalDev) Registry() (string, error) {
 	return fmt.Sprintf("http://%s:%d", ip, RegistryNodePort), nil
 }
 
+//EdgeNodes returns the list of nodes which are running ingress controllers. In our case, it's the master node's IP
 func (provisioner *ProvisionerLocalDev) EdgeNodes() ([]string, error) {
 	masters, err := clusterMasterNodes()
 	if err != nil {
