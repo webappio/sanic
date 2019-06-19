@@ -17,3 +17,13 @@ Sanic is an all-in-one tool to build, test, and deploy software organized in a [
 
 ### Timestamp as a Service
 A simple app which consists of three Docker services: A [Python Flask](http://flask.pocoo.org/) api server and web server, and a [Redis](https://redis.io/) container
+
+To try it out, clone this repository somewhere, then, in a bash shell:
+1. `GO111MODULE=on go install`
+2. `cd examples/timestamp-as-a-service`
+3. `sanic env dev`
+4. `sanic deploy` (to start the local environment, this may take a while. Note the URL printed at the end)
+5. `sanic build --push` (to build and push the images)
+6. `sanic kubectl get po` (to list the running pods in the new cluster)
+7. `sanic kubectl delete po --all` (to force kubernetes to check if new pods have been created, avoiding waiting a minute after building)
+8. Navigate to the URL that was printed in step #4 to see the deployed webserver!
