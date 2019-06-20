@@ -133,7 +133,11 @@ func (logger *flatfileLogger) logStatus(service string, status *client.VertexSta
 	for _, s := range logger.currVertexStatuses {
 		statuses = append(statuses, s+"\n")
 	}
-	sort.Strings(statuses)
+	sort.Slice(statuses, func(i, j int) bool {
+		textI := statuses[i][strings.Index(statuses[i], "]")+3] //TODO HACK remove date
+		textJ := statuses[j][strings.Index(statuses[j], "]")+3]
+		return textI < textJ
+	})
 	written, err := f.WriteString(strings.Join(statuses, ""))
 	if err != nil {
 		return err
