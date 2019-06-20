@@ -121,7 +121,7 @@ func (logger *flatfileLogger) logStatus(service string, status *client.VertexSta
 	} else {
 		statusText = fmt.Sprintf("%s %s", idText, humanReadableBytes(status.Current))
 	}
-	statusTextTimestamp := fmt.Sprintf("[%s]: %s", status.Timestamp.In(time.Local), statusText)
+	statusTextTimestamp := fmt.Sprintf("[%s] %s", status.Timestamp.In(time.Local), statusText)
 
 	if status.Completed != nil {
 		delete(logger.currVertexStatuses, status.ID)
@@ -143,9 +143,9 @@ func (logger *flatfileLogger) logStatus(service string, status *client.VertexSta
 		return err
 	}
 	for _, listener := range logger.logLineListeners {
-		if len(statuses) > 0 {
-			statusText = statuses[len(statuses)-1]
-			statusText = statusText[strings.Index(statusText, "]")+3:] //TODO HACK
+		for i := 0; i < len(statuses); i++ {
+			statusText = statuses[i]
+			statusText = statusText[strings.Index(statusText, "]")+3:] //TODO HACK remove date
 		}
 		listener(service, statusText+"\n")
 	}
@@ -168,8 +168,8 @@ func (logger *flatfileLogger) ProcessStatus(service string, status *client.Solve
 	}
 
 	for _, log := range status.Logs {
-		logMessage := []rune(string(log.Data))
-		if err := logger.Log(service, log.Timestamp, strings.Trim(string(logMessage), "\r\n")); err != nil {
+		logMessage := string(log.Data)
+		if err := logger.Log(service, log.Timestamp, strings.Trim(logMessage, "\r\n")); err != nil {
 			return errors.Errorf("Could not write to %s's logs: %s", service, err.Error())
 		}
 	}

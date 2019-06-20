@@ -144,15 +144,15 @@ func (iface *interactiveInterface) redrawScreen() {
 			break
 		}
 		displayAndTruncateString(currRenderLine, "[failed] "+job.image, failureStyle)
-		currRenderLine += 1
+		currRenderLine++
 		logLinesToDisplay := linesPerJob - 1
 		if numRemainderLines > 0 {
-			logLinesToDisplay += 1
-			numRemainderLines -= 1
+			logLinesToDisplay++
+			numRemainderLines--
 		}
 		for _, logLine := range job.lastLogLines.Peek(logLinesToDisplay) {
 			displayAndTruncateString(currRenderLine, logLine, iface.screenStyle)
-			currRenderLine += 1
+			currRenderLine++
 		}
 	}
 
@@ -162,15 +162,15 @@ func (iface *interactiveInterface) redrawScreen() {
 			break
 		}
 		displayAndTruncateString(currRenderLine, "[building] "+job.image, currStyle)
-		currRenderLine += 1
+		currRenderLine++
 		logLinesToDisplay := linesPerJob - 1
 		if numRemainderLines > 0 {
-			logLinesToDisplay += 1
-			numRemainderLines -= 1
+			logLinesToDisplay++
+			numRemainderLines--
 		}
 		for _, logLine := range job.lastLogLines.Peek(logLinesToDisplay) {
 			displayAndTruncateString(currRenderLine, logLine, iface.screenStyle)
-			currRenderLine += 1
+			currRenderLine++
 		}
 	}
 
@@ -196,11 +196,11 @@ func (iface *interactiveInterface) Close() {
 
 	iface.running = false
 	iface.screen.Fini()
-	var serviceNames []string
+	var serviceLogDirs []string
 	anyJobsFailed := false
 	allJobsFailed := true
 	for jobName, job := range iface.jobs {
-		serviceNames = append(serviceNames, jobName)
+		serviceLogDirs = append(serviceLogDirs, fmt.Sprintf("logs/%s.log", jobName)) //TODO messy
 		if job.status == "succeeded" {
 			allJobsFailed = false
 		} else {
@@ -209,9 +209,9 @@ func (iface *interactiveInterface) Close() {
 	}
 
 	if allJobsFailed {
-		fmt.Printf("Failed to build some of the following jobs: %s\nSee the logs folder for details.\n", strings.Join(serviceNames, ", "))
+		fmt.Printf("Failed to build some of the following jobs: %s\nSee the logs folder for details.\n", strings.Join(serviceLogDirs, ", "))
 	} else if !anyJobsFailed {
-		fmt.Printf("Successfully built: %s\n", strings.Join(serviceNames, ", "))
+		fmt.Printf("Successfully built: %s\n", strings.Join(serviceLogDirs, " "))
 	} //otherwise, build was cancelled
 
 }
