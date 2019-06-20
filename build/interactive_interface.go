@@ -14,6 +14,7 @@ type interactiveInterfaceJob struct {
 	lastLogLines   *util.StringRingBuffer
 	linesDisplayed int //used at rendering time
 	status         string
+	image          string
 	service        string
 }
 
@@ -142,7 +143,7 @@ func (iface *interactiveInterface) redrawScreen() {
 		if currRenderLine+1 >= height-2 {
 			break
 		}
-		displayAndTruncateString(currRenderLine, "[failed] "+job.service, failureStyle)
+		displayAndTruncateString(currRenderLine, "[failed] "+job.image, failureStyle)
 		currRenderLine += 1
 		logLinesToDisplay := linesPerJob - 1
 		if numRemainderLines > 0 {
@@ -160,7 +161,7 @@ func (iface *interactiveInterface) redrawScreen() {
 		if currRenderLine+1 >= height-2 {
 			break
 		}
-		displayAndTruncateString(currRenderLine, "[building] "+job.service, currStyle)
+		displayAndTruncateString(currRenderLine, "[building] "+job.image, currStyle)
 		currRenderLine += 1
 		logLinesToDisplay := linesPerJob - 1
 		if numRemainderLines > 0 {
@@ -215,11 +216,15 @@ func (iface *interactiveInterface) Close() {
 
 }
 
-func (iface *interactiveInterface) StartJob(service string) {
+func (iface *interactiveInterface) StartJob(service string, image string) {
 	iface.mutex.Lock()
 	defer iface.mutex.Unlock()
 
-	iface.jobs[service] = &interactiveInterfaceJob{service: service, lastLogLines: util.CreateStringRingBuffer(20)}
+	iface.jobs[service] = &interactiveInterfaceJob{
+		service:      service,
+		image:        image,
+		lastLogLines: util.CreateStringRingBuffer(20),
+	}
 }
 
 func (iface *interactiveInterface) FailJob(service string, err error) {

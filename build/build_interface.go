@@ -7,7 +7,7 @@ package build
 */
 type Interface interface {
 	//StartJob notifies the interface that a job has been received, and ready to start
-	StartJob(service string)
+	StartJob(service string, image string)
 	//FailJob marks a specific job as having failed with a given error.
 	//This job is "dead" and will no longer receive any logs.
 	FailJob(service string, err error)

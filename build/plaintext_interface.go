@@ -13,6 +13,7 @@ import (
 type plaintextInterfaceJob struct {
 	totalJobLogs strings.Builder
 	startTime    time.Time
+	image        string
 }
 
 type plaintextInterface struct {
@@ -49,11 +50,11 @@ func (iface *plaintextInterface) Close() {
 	//do nothing
 }
 
-func (iface *plaintextInterface) StartJob(service string) {
+func (iface *plaintextInterface) StartJob(service string, image string) {
 	iface.mutex.Lock()
 	defer iface.mutex.Unlock()
 
-	iface.jobs[service] = &plaintextInterfaceJob{}
+	iface.jobs[service] = &plaintextInterfaceJob{image: image}
 }
 
 func (iface *plaintextInterface) FailJob(service string, err error) {
@@ -65,7 +66,7 @@ func (iface *plaintextInterface) FailJob(service string, err error) {
 		if err == context.Canceled {
 			//do nothing: job was cancelled
 		} else if logs != "" {
-			fmt.Printf("[%s] JOB FAILED: %s\n", service, err.Error())
+			fmt.Printf("[%s] JOB FAILED: %s\n", job.image, err.Error())
 			fmt.Printf("[%s] LOGS FOR FAILED SERVICE:\n", service)
 			fmt.Print(logs)
 			fmt.Printf("[%s] END FAILURE LOGS \n\n", service)
@@ -82,7 +83,7 @@ func (iface *plaintextInterface) SucceedJob(service string) {
 	if job, ok := iface.jobs[service]; ok {
 		logs := job.totalJobLogs.String()
 		if logs != "" {
-			fmt.Printf("[%s] Logs for successfully built service:\n", service)
+			fmt.Printf("[%s] Logs for successfully built service:\n", job.image)
 			fmt.Print(logs)
 			fmt.Printf("[%s] End of logs.\n\n", service)
 		} else {

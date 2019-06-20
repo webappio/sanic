@@ -41,27 +41,39 @@ func buildOptions(serviceDir string) *client.SolveOpt {
 	return solveOpt
 }
 
-func exportEntries(serviceName, buildTag string, push bool, writer io.WriteCloser) ([]client.ExportEntry, error) {
+func getRegistry() (registry string, insecure bool, err error) {
 	provisioner, err := provisioners.GetProvisioner()
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	registry, err := provisioner.Registry()
+	registry, err = provisioner.Registry()
 	if err != nil {
-		return nil, err
+		return
 	}
-	insecure := "false"
+	insecure = false
 	if strings.HasPrefix(registry, "http://") {
-		insecure = "true"
+		insecure = true
 		registry = registry[len("http://"):]
 	} else if strings.HasPrefix(registry, "https://") {
 		registry = registry[len("https://"):]
 	} else {
-		return nil, fmt.Errorf("Registry must start with 'http://' or 'https://', got '%s'", registry)
+		err = fmt.Errorf("Registry must start with 'http://' or 'https://', got '%s'", registry)
+	}
+	return
+}
+
+func exportEntries(serviceName, buildTag string, push bool, writer io.WriteCloser) ([]client.ExportEntry, error) {
+	registry, insecure, err := getRegistry()
+	if err != nil {
+		return nil, err
 	}
 	fullImageName := fmt.Sprintf("%s/%s:%s", registry, serviceName, buildTag)
+	insecureString := "false"
+	if insecure {
+		insecureString = "true"
+	}
 
 	if push {
 		return []client.ExportEntry{
@@ -70,7 +82,7 @@ func exportEntries(serviceName, buildTag string, push bool, writer io.WriteClose
 				Attrs: map[string]string{
 					"name":              fullImageName,
 					"push":              "true",
-					"registry.insecure": insecure,
+					"registry.insecure": insecureString,
 				},
 			},
 		}, nil
@@ -91,13 +103,16 @@ func buildService(
 	buildInterface build.Interface,
 	buildLogger build.Logger,
 	serviceDir string,
+	registry string,
 	buildTag string,
 	cliContext *cli.Context,
 ) error {
-
 	serviceName := filepath.Base(serviceDir)
-	serviceID := fmt.Sprintf("%s:%s", serviceName, buildTag)
-	buildInterface.StartJob(serviceID)
+	if registry == "" {
+		buildInterface.StartJob(serviceName, fmt.Sprintf("%s:%s", serviceName, buildTag))
+	} else {
+		buildInterface.StartJob(serviceName, fmt.Sprintf("%s/%s:%s", registry, serviceName, buildTag))
+	}
 	statusChannel := make(chan *client.SolveStatus)
 
 	push := cliContext.Bool("push")
@@ -111,8 +126,8 @@ func buildService(
 	}
 	buildOpts.Exports, err = exportEntries(serviceName, buildTag, push, resultW)
 	if err != nil {
-		buildInterface.FailJob(serviceID, err)
-		buildLogger.Log(serviceID, time.Now(), "Could not configure pushing / saving for image! ", err.Error())
+		buildInterface.FailJob(serviceName, err)
+		buildLogger.Log(serviceName, time.Now(), "Could not configure pushing / saving for image! ", err.Error())
 		return err
 	}
 
@@ -121,21 +136,21 @@ func buildService(
 		func(ctx context.Context) error {
 			buildkitClient, err := client.New(ctx, build.BuildkitDaemonAddr, client.WithFailFast())
 			if err != nil {
-				buildInterface.FailJob(serviceID, err)
-				buildLogger.Log(serviceID, time.Now(), "Could not connect to build daemon! ", err.Error())
+				buildInterface.FailJob(serviceName, err)
+				buildLogger.Log(serviceName, time.Now(), "Could not connect to build daemon! ", err.Error())
 				return err
 			}
-			buildLogger.Log(serviceID, time.Now(), "Starting build of ", serviceDir)
+			buildLogger.Log(serviceName, time.Now(), "Starting build of ", serviceDir)
 			solveStatus, err := buildkitClient.Build(ctx, *buildOpts, "", dockerfile.Build, statusChannel)
 			if solveStatus != nil {
 				//TODO if this is null should print a warning that we failed to push
 				//e.g., when we haven't deployed yet
 				for k, v := range solveStatus.ExporterResponse {
-					buildLogger.Log(serviceID, time.Now(), fmt.Sprintf("exporter: %s=%s", k, v))
+					buildLogger.Log(serviceName, time.Now(), fmt.Sprintf("exporter: %s=%s", k, v))
 				}
 			}
 			if err != nil {
-				buildLogger.Log(serviceID, time.Now(), "FAILED: ", err.Error())
+				buildLogger.Log(serviceName, time.Now(), "FAILED: ", err.Error())
 			}
 			return err
 		},
@@ -162,7 +177,7 @@ func buildService(
 					if !ok {
 						return nil
 					}
-					logErr := buildLogger.ProcessStatus(serviceID, status)
+					logErr := buildLogger.ProcessStatus(serviceName, status)
 					if logErr != nil {
 						fmt.Fprintln(os.Stderr, logErr.Error())
 					}
@@ -172,11 +187,11 @@ func buildService(
 	)
 
 	if err == nil {
-		buildInterface.SucceedJob(serviceID)
-		buildLogger.Log(serviceID, time.Now(), "Build succeeded!")
+		buildInterface.SucceedJob(serviceName)
+		buildLogger.Log(serviceName, time.Now(), "Build succeeded!")
 	} else if err != context.Canceled {
-		buildInterface.FailJob(serviceID, err)
-		buildLogger.Log(serviceID, time.Now(), "Build failed! ", err.Error())
+		buildInterface.FailJob(serviceName, err)
+		buildLogger.Log(serviceName, time.Now(), "Build failed! ", err.Error())
 	}
 	return err
 }
@@ -219,6 +234,11 @@ func buildCommandAction(cliContext *cli.Context) error {
 
 	jobs := make([]func(context.Context) error, 0, len(services))
 
+	registry, _, err := getRegistry()
+	if err != nil {
+		registry = "'"
+	}
+
 	for _, serviceDir := range services {
 		finalServiceDir := serviceDir
 		jobs = append(jobs, func(ctx context.Context) error {
@@ -227,6 +247,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 				buildInterface,
 				buildLogger,
 				finalServiceDir,
+				registry,
 				buildTag,
 				cliContext,
 			)
