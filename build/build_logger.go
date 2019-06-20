@@ -165,6 +165,11 @@ func (logger *flatfileLogger) ProcessStatus(service string, status *client.Solve
 			if v.Cached {
 				logMessage = "cached: " + logMessage
 			}
+			if v.Error != "" {
+				if err := logger.Log(service, time.Now(), fmt.Sprintf("%s: LAYERID=%s", v.Error, v.Digest.String())); err != nil {
+					return errors.Errorf("Could not log failure to %s's logs: %s", service, err.Error())
+				}
+			}
 			if err := logger.Log(service, time.Now(), logMessage); err != nil {
 				return errors.Errorf("Could not write to %s's logs: %s", service, err.Error())
 			}

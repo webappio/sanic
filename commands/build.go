@@ -8,38 +8,11 @@ import (
 	"github.com/distributed-containers-inc/sanic/provisioners"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/distributed-containers-inc/sanic/util"
-	"github.com/moby/buildkit/client"
-	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	"github.com/urfave/cli"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 )
-
-func createBuildInterface(forceNoninteractive bool) build.Interface {
-	if !forceNoninteractive {
-		interactiveInterface, err := build.NewInteractiveInterface()
-		if err == nil {
-			return interactiveInterface
-		}
-		fmt.Fprintf(os.Stderr, "Failed to launch interactive interface: %s\n", err.Error())
-	}
-	return build.NewPlaintextInterface()
-}
-
-func buildOptions(serviceDir string) *client.SolveOpt {
-	solveOpt := &client.SolveOpt{
-		LocalDirs: map[string]string{
-			"context":    serviceDir,
-			"dockerfile": serviceDir,
-		},
-	}
-
-	return solveOpt
-}
 
 func getRegistry() (registry string, insecure bool, err error) {
 	provisioner, err := provisioners.GetProvisioner()
@@ -64,136 +37,15 @@ func getRegistry() (registry string, insecure bool, err error) {
 	return
 }
 
-func exportEntries(serviceName, buildTag string, push bool, writer io.WriteCloser) ([]client.ExportEntry, error) {
-	registry, insecure, err := getRegistry()
-	if err != nil {
-		return nil, err
+func createBuildInterface(forceNoninteractive bool) build.Interface {
+	if !forceNoninteractive {
+		interactiveInterface, err := build.NewInteractiveInterface()
+		if err == nil {
+			return interactiveInterface
+		}
+		fmt.Fprintf(os.Stderr, "Failed to launch interactive interface: %s\n", err.Error())
 	}
-	fullImageName := fmt.Sprintf("%s/%s:%s", registry, serviceName, buildTag)
-	insecureString := "false"
-	if insecure {
-		insecureString = "true"
-	}
-
-	if push {
-		return []client.ExportEntry{
-			{
-				Type: "image",
-				Attrs: map[string]string{
-					"name":              fullImageName,
-					"push":              "true",
-					"registry.insecure": insecureString,
-				},
-			},
-		}, nil
-	}
-	return []client.ExportEntry{
-		{
-			Type: "docker",
-			Attrs: map[string]string{
-				"name": fullImageName,
-			},
-			Output: writer,
-		},
-	}, nil
-}
-
-func buildService(
-	ctx context.Context,
-	buildInterface build.Interface,
-	buildLogger build.Logger,
-	serviceDir string,
-	registry string,
-	buildTag string,
-	cliContext *cli.Context,
-) error {
-	serviceName := filepath.Base(serviceDir)
-	if registry == "" {
-		buildInterface.StartJob(serviceName, fmt.Sprintf("%s:%s", serviceName, buildTag))
-	} else {
-		buildInterface.StartJob(serviceName, fmt.Sprintf("%s/%s:%s", registry, serviceName, buildTag))
-	}
-	statusChannel := make(chan *client.SolveStatus)
-
-	push := cliContext.Bool("push")
-
-	buildOpts := buildOptions(serviceDir)
-	var resultR *io.PipeReader
-	var resultW *io.PipeWriter
-	var err error
-	if !push {
-		resultR, resultW = io.Pipe()
-	}
-	buildOpts.Exports, err = exportEntries(serviceName, buildTag, push, resultW)
-	if err != nil {
-		buildInterface.FailJob(serviceName, err)
-		buildLogger.Log(serviceName, time.Now(), "Could not configure pushing / saving for image! ", err.Error())
-		return err
-	}
-
-	err = util.RunContextuallyInParallel(
-		ctx,
-		func(ctx context.Context) error {
-			buildkitClient, err := client.New(ctx, build.BuildkitDaemonAddr, client.WithFailFast())
-			if err != nil {
-				buildInterface.FailJob(serviceName, err)
-				buildLogger.Log(serviceName, time.Now(), "Could not connect to build daemon! ", err.Error())
-				return err
-			}
-			buildLogger.Log(serviceName, time.Now(), "Starting build of ", serviceDir)
-			solveStatus, err := buildkitClient.Build(ctx, *buildOpts, "", dockerfile.Build, statusChannel)
-			if solveStatus != nil {
-				//TODO if this is null should print a warning that we failed to push
-				//e.g., when we haven't deployed yet
-				for k, v := range solveStatus.ExporterResponse {
-					buildLogger.Log(serviceName, time.Now(), fmt.Sprintf("exporter: %s=%s", k, v))
-				}
-			}
-			if err != nil {
-				buildLogger.Log(serviceName, time.Now(), "FAILED: ", err.Error())
-			}
-			return err
-		},
-		func(ctx context.Context) error {
-			//Load the built service into the docker engine
-			if !push {
-				cmd := exec.Command("docker", "load")
-				cmd.Stdin = resultR
-				if err = cmd.Start(); err != nil {
-					return err
-				}
-				err = util.WaitCmdContextually(ctx, cmd)
-				resultR.CloseWithError(err)
-				return err
-			}
-			return nil
-		},
-		func(ctx context.Context) error {
-			for {
-				select {
-				case <-ctx.Done():
-					return context.Canceled
-				case status, ok := <-statusChannel:
-					if !ok {
-						return nil
-					}
-					logErr := buildLogger.ProcessStatus(serviceName, status)
-					if logErr != nil {
-						fmt.Fprintln(os.Stderr, logErr.Error())
-					}
-				}
-			}
-		},
-	)
-
-	if err == nil {
-		buildInterface.SucceedJob(serviceName)
-		buildLogger.Log(serviceName, time.Now(), "Build succeeded!")
-	} else if err != context.Canceled {
-		buildInterface.FailJob(serviceName, err)
-		buildLogger.Log(serviceName, time.Now(), "Build failed! ", err.Error())
-	}
-	return err
+	return build.NewPlaintextInterface()
 }
 
 //adapted from
@@ -234,22 +86,29 @@ func buildCommandAction(cliContext *cli.Context) error {
 
 	jobs := make([]func(context.Context) error, 0, len(services))
 
-	registry, _, err := getRegistry()
+	registry, registryInsecure, err := getRegistry()
 	if err != nil {
-		registry = "'"
+		if cliContext.Bool("push") {
+			return cli.NewExitError(fmt.Sprintf("could not get registry to push to: %s", err.Error()), 1)
+		}
+		registry = ""
+	}
+
+	builder := build.Builder{
+		Registry: registry,
+		RegistryInsecure: registryInsecure,
+		BuildTag: buildTag,
+		Logger: buildLogger,
+		Interface: buildInterface,
+		DoPush: cliContext.Bool("push"),
 	}
 
 	for _, serviceDir := range services {
 		finalServiceDir := serviceDir
 		jobs = append(jobs, func(ctx context.Context) error {
-			return buildService(
+			return builder.BuildService(
 				ctx,
-				buildInterface,
-				buildLogger,
 				finalServiceDir,
-				registry,
-				buildTag,
-				cliContext,
 			)
 		})
 	}
