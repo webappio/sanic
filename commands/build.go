@@ -228,7 +228,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 		}
 	}()
 
-	buildLogger := build.NewFlatfileLogger(filepath.Join(s.GetSanicRoot(), "logs"))
+	buildLogger := build.NewFlatfileLogger(filepath.Join(s.GetSanicRoot(), "logs"), cliContext.Bool("verbose"))
 	buildLogger.AddLogLineListener(buildInterface.ProcessLog)
 	defer buildLogger.Close()
 
@@ -285,6 +285,10 @@ var buildCommand = cli.Command{
 		cli.BoolFlag{
 			Name:  "push",
 			Usage: "pushes to the configured registry for the current environment instead of loading locally",
+		},
+		cli.BoolFlag{
+			Name: "verbose",
+			Usage: "enables verbose logging, mostly for sanic development",
 		},
 	},
 }

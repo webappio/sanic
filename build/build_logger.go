@@ -23,23 +23,22 @@ type Logger interface {
 }
 
 type flatfileLogger struct {
-	mutex sync.Mutex
-
-	LogDirectory string
-
+	mutex              sync.Mutex
+	LogDirectory       string
 	currVertexStatuses map[string]string
-
-	openFiles        map[string]*os.File
-	logLineListeners []func(service, logLine string)
+	openFiles          map[string]*os.File
+	logLineListeners   []func(service, logLine string)
+	verbose            bool
 }
 
 //NewFlatfileLogger builds a new Logger which writes text logs to (repository root)/logs/(service name).log
-func NewFlatfileLogger(logDirectory string) Logger {
+func NewFlatfileLogger(logDirectory string, verbose bool) Logger {
 	return &flatfileLogger{
 		LogDirectory:       logDirectory,
 		openFiles:          make(map[string]*os.File),
 		currVertexStatuses: make(map[string]string),
 		logLineListeners:   []func(service, logLine string){},
+		verbose:            verbose,
 	}
 }
 
@@ -158,20 +157,38 @@ func (logger *flatfileLogger) logStatus(service string, status *client.VertexSta
 
 func (logger *flatfileLogger) ProcessStatus(service string, status *client.SolveStatus) error {
 	for _, v := range status.Vertexes { //e.g., [6/6] ADD app.py ./
+		if logger.verbose {
+			logger.Log(service, time.Now(), fmt.Sprintf("Vertex: '%s',  '%s',  '%s'", v.Name, v.Error, v.Digest.String()))
+		}
 		if strings.Index(v.Name, "[internal]") != 0 { //TODO HACK these are annoying
-			if err := logger.Log(service, time.Now(), v.Name); err != nil {
+			logMessage := v.Name
+			if v.Cached {
+				logMessage = "cached: " + logMessage
+			}
+			if err := logger.Log(service, time.Now(), logMessage); err != nil {
 				return errors.Errorf("Could not write to %s's logs: %s", service, err.Error())
 			}
 		}
 	}
 
 	for _, vs := range status.Statuses {
+		if logger.verbose {
+			logger.Log(service, time.Now(),
+				fmt.Sprintf(
+					"Status: '%s'.  '%s',  '%s',  (curr=%d, total=%d)",
+					vs.Name, vs.ID, vs.Vertex.String(), vs.Current, vs.Total,
+				),
+			)
+		}
 		if err := logger.logStatus(service, vs); err != nil {
 			return errors.Errorf("Could not status to %s's logs: %s", service, err.Error())
 		}
 	}
 
 	for _, log := range status.Logs {
+		if logger.verbose {
+			logger.Log(service, time.Now(), fmt.Sprintf("Log: '%s',  '%s'", string(log.Data), log.Vertex.String()))
+		}
 		logMessage := string(log.Data)
 		if err := logger.Log(service, log.Timestamp, strings.Trim(logMessage, "\r\n")); err != nil {
 			return errors.Errorf("Could not write to %s's logs: %s", service, err.Error())
