@@ -205,7 +205,13 @@ func buildCommandAction(cliContext *cli.Context) error {
 	}
 
 	buildInterface := createBuildInterface(cliContext.Bool("plaintext"))
-	defer buildInterface.Close()
+	defer func() {
+		r := recover()
+		buildInterface.Close()
+		if r != nil {
+			panic(r)
+		}
+	}()
 
 	buildLogger := build.NewFlatfileLogger(filepath.Join(s.GetSanicRoot(), "logs"))
 	buildLogger.AddLogLineListener(buildInterface.ProcessLog)

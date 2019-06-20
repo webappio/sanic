@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"github.com/distributed-containers-inc/sanic/util"
 	"github.com/gdamore/tcell"
 	"sort"
 	"strings"
@@ -10,10 +11,10 @@ import (
 )
 
 type interactiveInterfaceJob struct {
-	lastNonemptyLog     string
-	lastNonemptyLogTime time.Time
-	status              string
-	service             string
+	lastLogLines   *util.StringRingBuffer
+	linesDisplayed int //used at rendering time
+	status         string
+	service        string
 }
 
 type interactiveInterface struct {
@@ -78,6 +79,14 @@ func NewInteractiveInterface() (Interface, error) {
 }
 
 func (iface *interactiveInterface) redrawScreen() {
+	defer func() {
+		r := recover()
+		if r != nil {
+			iface.Close()
+			panic(r)
+		}
+	}()
+
 	width, height := iface.screen.Size()
 
 	iface.mutex.Lock()
@@ -116,37 +125,66 @@ func (iface *interactiveInterface) redrawScreen() {
 		}
 	}
 
+	numFailedAndBuilding := len(failedJobs) + len(currJobs)
+	if numFailedAndBuilding == 0 {
+		return
+	}
+
 	currRenderLine := 0
+	linesPerJob := (height - 1) / numFailedAndBuilding
+	if linesPerJob < 2 {
+		linesPerJob = 2
+	}
+	numRemainderLines := height - 1 - linesPerJob*numFailedAndBuilding
 
 	failureStyle := iface.screenStyle.Foreground(tcell.NewRGBColor(190, 0, 0))
-	for _, failedJob := range failedJobs {
-		if currRenderLine >= height-1 {
+	for _, job := range failedJobs {
+		if currRenderLine+1 >= height-2 {
 			break
 		}
-		displayAndTruncateString(currRenderLine, "[failed] "+failedJob.service, failureStyle)
-		displayAndTruncateString(currRenderLine+1, failedJob.lastNonemptyLog, iface.screenStyle)
-		currRenderLine += 2
+		displayAndTruncateString(currRenderLine, "[failed] "+job.service, failureStyle)
+		currRenderLine += 1
+		logLinesToDisplay := linesPerJob - 1
+		if numRemainderLines > 0 {
+			logLinesToDisplay += 1
+			numRemainderLines -= 1
+		}
+		for _, logLine := range job.lastLogLines.Peek(logLinesToDisplay) {
+			displayAndTruncateString(currRenderLine, logLine, iface.screenStyle)
+			currRenderLine += 1
+		}
 	}
 
 	currStyle := iface.screenStyle.Foreground(tcell.NewRGBColor(190, 190, 0))
-	for _, currJob := range currJobs {
-		if currRenderLine >= height-1 {
+	for _, job := range currJobs {
+		if currRenderLine+1 >= height-2 {
 			break
 		}
-		displayAndTruncateString(currRenderLine, "[building] "+currJob.service, currStyle)
-		displayAndTruncateString(currRenderLine+1, currJob.lastNonemptyLog, iface.screenStyle)
-		currRenderLine += 2
+		displayAndTruncateString(currRenderLine, "[building] "+job.service, currStyle)
+		currRenderLine += 1
+		logLinesToDisplay := linesPerJob - 1
+		if numRemainderLines > 0 {
+			logLinesToDisplay += 1
+			numRemainderLines -= 1
+		}
+		for _, logLine := range job.lastLogLines.Peek(logLinesToDisplay) {
+			displayAndTruncateString(currRenderLine, logLine, iface.screenStyle)
+			currRenderLine += 1
+		}
 	}
 
-	succeededStyle := iface.screenStyle.Foreground(tcell.NewRGBColor(0, 190, 0))
-	for _, succeededJob := range succeededJobs {
-		if currRenderLine >= height-1 {
-			break
-		}
-		displayAndTruncateString(currRenderLine, "[complete] "+succeededJob.service, succeededStyle)
-		displayAndTruncateString(currRenderLine+1, succeededJob.lastNonemptyLog, iface.screenStyle)
-		currRenderLine += 2
-	}
+	numJobs := len(currJobs) + len(failedJobs) + len(succeededJobs)
+	statusStyle := iface.screenStyle.Foreground(tcell.NewRGBColor(190, 190, 190))
+	displayAndTruncateString(
+		height-1,
+		fmt.Sprintf(
+			"%d/%d failed, %d/%d completed, %d/%d building",
+			len(failedJobs), numJobs,
+			len(succeededJobs), numJobs,
+			len(currJobs), numJobs,
+		),
+		statusStyle,
+	)
 
 	iface.screen.Show()
 }
@@ -181,7 +219,7 @@ func (iface *interactiveInterface) StartJob(service string) {
 	iface.mutex.Lock()
 	defer iface.mutex.Unlock()
 
-	iface.jobs[service] = &interactiveInterfaceJob{service: service}
+	iface.jobs[service] = &interactiveInterfaceJob{service: service, lastLogLines: util.CreateStringRingBuffer(20)}
 }
 
 func (iface *interactiveInterface) FailJob(service string, err error) {
@@ -212,9 +250,8 @@ func (iface *interactiveInterface) ProcessLog(service, logLine string) {
 	}
 	logLine = strings.TrimSpace(logLine)
 	if logLine != "" {
-		job.lastNonemptyLog = logLine
+		job.lastLogLines.Push(logLine)
 		//notice: server time might drift, so we use local time
-		job.lastNonemptyLogTime = time.Now()
 	}
 }
 
