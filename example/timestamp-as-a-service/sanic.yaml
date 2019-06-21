@@ -9,7 +9,7 @@ environments:
     clusterProvisionerArgs:
       registry: sanic.io
       masters: sanic.io
-      kubeconfig: ~/.kube/sanic.io.config
+      kubeConfig: ~/.kube/sanic.io.config
 deploy:
   folder: "deploy"
   templaterImage: "sanic/templater-golang:latest"

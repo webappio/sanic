@@ -26,7 +26,7 @@ func enterCommandAction(cliContext *cli.Context) error {
 	}
 	kubeConfigLocation := provisioner.KubeConfigLocation()
 	if _, err := os.Stat(kubeConfigLocation); os.IsNotExist(err) {
-		return cli.NewExitError("the kubernetes configuration doesn't exist yet, use sanic deploy first", 1)
+		return cli.NewExitError("the kubernetes configuration doesn't exist yet, use sanic deploy first if in localdev", 1)
 	}
 	cmd := exec.Command("kubectl", "get", "pods", "-o", "jsonpath={.items[*].metadata.name}")
 	stdout := &bytes.Buffer{}

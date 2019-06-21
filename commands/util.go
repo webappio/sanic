@@ -28,7 +28,7 @@ func getKubectlEnvironment() ([]string, error) {
 	}
 	kubeConfigLocation := provisioner.KubeConfigLocation()
 	if _, err := os.Stat(kubeConfigLocation); os.IsNotExist(err) {
-		return nil, errors.New("the kubernetes configuration doesn't exist yet, use sanic deploy first")
+		return nil, errors.New("the kubernetes configuration doesn't exist yet, use sanic deploy first if in localdev")
 	}
 	return append(os.Environ(), "KUBECONFIG="+kubeConfigLocation), nil
 }

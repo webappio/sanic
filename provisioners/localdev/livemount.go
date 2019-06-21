@@ -41,7 +41,7 @@ func (provisioner *ProvisionerLocalDev) InClusterDir(hostDir string) string {
 	hostDir, err := filepath.EvalSymlinks(hostDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not evaluate symlinks in path %s: %s", hostDir, err.Error())
-		return "<iNVALID_MOUNTPOINT_SYMLINKS>"
+		return "<INVALID_MOUNTPOINT_SYMLINKS>"
 	}
 
 	for _, mnt := range provisioner.liveMounts() {
