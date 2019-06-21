@@ -23,8 +23,10 @@ func (provisioner *ProvisionerExternal) KubeConfigLocation() string {
 	return provisioner.kubeConfigLocation
 }
 
-func (provisioner *ProvisionerExternal) Registry() (string, error) {
-	return provisioner.registry, nil
+func (provisioner *ProvisionerExternal) Registry() (registryAddr string, registryInsecure bool, err error) {
+	registryAddr = provisioner.registry
+	registryInsecure = false
+	return
 }
 
 func (provisioner *ProvisionerExternal) EdgeNodes() ([]string, error) {
@@ -66,11 +68,7 @@ func ValidateConfig(args map[string]string) error {
 	if _, err = os.Stat(config); err != nil {
 		return fmt.Errorf("configuration file at %s did not exist: %s", config, err.Error())
 	}
-	if reg, exists := args["registry"]; exists {
-		if !strings.HasPrefix(reg, "http://") && !strings.HasPrefix(reg, "https://") {
-			return fmt.Errorf("Registry needs to start with http:// (insecure) or https://")
-		}
-	} else {
+	if _, exists := args["registry"]; !exists {
 		return fmt.Errorf("configuration needs to include the registry to push to, i.e., https://registry.hub.docker.com/registryUserName")
 	}
 	return nil

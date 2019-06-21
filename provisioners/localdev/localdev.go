@@ -56,20 +56,23 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 	return err
 }
 
-//Registry : In ProvisionerLocalDev, returns sanic-control-plane container IP:RegistryNodePort
-func (provisioner *ProvisionerLocalDev) Registry() (string, error) {
+//Registry : In ProvisionerLocalDev, returns sanic-control-plane container IP:RegistryNodePort, and true => insecure
+func (provisioner *ProvisionerLocalDev) Registry() (registryAddr string, registryInsecure bool, err error) {
 	masters, err := clusterMasterNodes()
 	if err != nil {
-		return "", err
+		return
 	}
 	if len(masters) != 1 {
-		return "", fmt.Errorf("got %d control plane containers, expected only one", len(masters))
+		err = fmt.Errorf("got %d control plane containers, expected only one", len(masters))
+		return
 	}
 	ip, err := masters[0].IP()
 	if err != nil {
-		return "", err
+		return
 	}
-	return fmt.Sprintf("http://%s:%d", ip, RegistryNodePort), nil
+	registryAddr = fmt.Sprintf("%s:%d", ip, RegistryNodePort)
+	registryInsecure = true
+	return
 }
 
 //EdgeNodes returns the list of nodes which are running ingress controllers. In our case, it's the master node's IP

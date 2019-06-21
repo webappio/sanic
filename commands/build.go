@@ -10,30 +10,16 @@ import (
 	"github.com/urfave/cli"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
-func getRegistry() (registry string, insecure bool, err error) {
+func getRegistry() (registryAddr string, registryInsecure bool, err error) {
 	provisioner, err := getProvisioner()
 
 	if err != nil {
 		return
 	}
 
-	registry, err = provisioner.Registry()
-	if err != nil {
-		return
-	}
-	insecure = false
-	if strings.HasPrefix(registry, "http://") {
-		insecure = true
-		registry = registry[len("http://"):]
-	} else if strings.HasPrefix(registry, "https://") {
-		registry = registry[len("https://"):]
-	} else {
-		err = fmt.Errorf("Registry must start with 'http://' or 'https://', got '%s'", registry)
-	}
-	return
+	return provisioner.Registry()
 }
 
 func createBuildInterface(forceNoninteractive bool) build.Interface {
