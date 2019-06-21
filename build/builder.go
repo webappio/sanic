@@ -6,6 +6,8 @@ import (
 	"github.com/distributed-containers-inc/sanic/util"
 	"github.com/moby/buildkit/client"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
+	"github.com/moby/buildkit/session"
+	"github.com/moby/buildkit/session/auth/authprovider"
 	"io"
 	"os"
 	"os/exec"
@@ -28,6 +30,7 @@ func (builder *Builder) buildkitSolveOpts(serviceDir, fullImageName string, writ
 			"context":    serviceDir,
 			"dockerfile": serviceDir,
 		},
+		Session: []session.Attachable{authprovider.NewDockerAuthProvider()},
 	}
 
 	insecureString := "false"
