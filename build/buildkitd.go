@@ -30,6 +30,7 @@ func EnsureBuildkitDaemon() error {
 		"--name", "sanic-buildkitd",
 		"--privileged",
 		"--network", "host",
+		"-v", "sanic-buildkitd:/var/lib/buildkit",
 		"moby/buildkit:latest", //TODO version pin / configure buildkit version?
 		"--addr", BuildkitDaemonAddr)
 	cmd.Stderr = stderr
