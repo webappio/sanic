@@ -8,27 +8,12 @@ Sanic is an all-in-one tool to build, test, and deploy software organized in a [
 2. Deployment is done with [Kubernetes](https://kubernetes.io/)
 3. Unit tests are stored in Dockerfiles in a folder named "dockerfiles" in each service
 
-See [Why Sanic](#why-sanic) to learn more.
-
 ## Why?
-
-### Why Docker
-It's easy enough to deploy a static website without docker, but deploying apps without Docker causes huge headaches:
-- Mismatched JDK versions break Java apps
-- Missing VirtualEnvs break Python apps
-- Differing gcc versions make it hard to build C/C++/other compiled apps (you need a file that says "how to build"!)
-
-Docker solves all of these things, at the expense of disk space -- it's the logical choice to build & run services
-
-### Why Kubernetes
-Docker itself is fine for single machines, but has very few features for running apps across multiple servers. It also lacks the ability to re-schedule crashed containers easily.  Kubernetes provides lots of abstractions over containers to let you say "I want 3 API servers running on 3 different machines, and a load balancer to select which ones are up"
-
-Another benefit is that Kubernetes is a decentralized analogue of Amazon Web Services, you can run it on premises, without internet, and change providers based on your needs.
 
 ### Why Sanic
 A lot of users of Docker/Kubernetes have similar requirements: Build a lot of dockerfiles, template some kubernetes configurations, and then deploy them to a kubernetes cluster.
 
-Each of those steps are currently painful: `docker build` is hard to parallelize well, templates hare hard to learn and debug, and local multinode deployment requires lots of internal kubernetes knowledge. 
+Each of those steps are currently painful: `docker build` is hard to parallelize well, templates are hard to learn and debug, and local multinode deployment requires lots of internal kubernetes knowledge. 
 
 *Sanic focuses on developer experience*. It has a plethora of features (live-mounting, template viewing, concurrent builds) which exist to make Docker/Kubernetes development just as fast as local development.
 
@@ -49,6 +34,19 @@ We believe that developers shouldn't have to learn a new templating language for
 If your templating language isn't supported, you can create a new image and sanic will use it with ease! See [sanic-templater-golang](https://github.com/distributed-containers-inc/sanic-templater-golang) for an example.
 
 Built templates go into an /out folder, so if there are any errors, it's easy to see exactly where they are.
+
+### Why Docker
+It's easy enough to deploy a static website without docker, but deploying apps without Docker causes huge headaches:
+- Mismatched JDK versions break Java apps
+- Missing VirtualEnvs break Python apps
+- Differing gcc versions make it hard to build C/C++/other compiled apps (you need a file that says "how to build"!)
+
+Docker solves all of these things, at the expense of disk space -- it's the logical choice to build & run services
+
+### Why Kubernetes
+Docker itself is fine for single machines, but has very few features for running apps across multiple servers. It also lacks the ability to re-schedule crashed containers easily.  Kubernetes provides lots of abstractions over containers to let you say "I want 3 API servers running on 3 different machines, and a load balancer to select which ones are up"
+
+Another benefit is that Kubernetes is a decentralized analogue of Amazon Web Services, you can run it on premises, without internet, and change providers based on your needs.
 
 # Requirements
 
