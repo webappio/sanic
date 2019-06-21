@@ -197,10 +197,12 @@ func (iface *interactiveInterface) Close() {
 	iface.running = false
 	iface.screen.Fini()
 	var serviceLogDirs []string
+	var serviceImages []string
 	anyJobsFailed := false
 	allJobsFailed := true
 	for jobName, job := range iface.jobs {
 		serviceLogDirs = append(serviceLogDirs, fmt.Sprintf("logs/%s.log", jobName)) //TODO messy
+		serviceImages = append(serviceImages, job.image)
 		if job.status == "succeeded" {
 			allJobsFailed = false
 		} else {
@@ -211,7 +213,7 @@ func (iface *interactiveInterface) Close() {
 	if allJobsFailed {
 		fmt.Printf("Failed to build some of the following jobs: %s\nSee the logs folder for details.\n", strings.Join(serviceLogDirs, ", "))
 	} else if !anyJobsFailed {
-		fmt.Printf("Successfully built: %s\n", strings.Join(serviceLogDirs, " "))
+		fmt.Printf("Successfully built: %s\n", strings.Join(serviceImages, " "))
 	} //otherwise, build was cancelled
 
 }
