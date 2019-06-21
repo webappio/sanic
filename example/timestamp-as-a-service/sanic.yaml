@@ -8,7 +8,7 @@ environments:
     clusterProvisioner: external
     clusterProvisionerArgs:
       registry: sanic.io
-      masters: sanic.io
+      edgeNodes: sanic.io
       kubeConfig: ~/.kube/sanic.io.config
 deploy:
   folder: "deploy"

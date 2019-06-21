@@ -62,6 +62,11 @@ func ReadFromPath(configPath string) (SanicConfig, error) {
 					strings.Join(provisioners.GetProvisionerNames(), ", "),
 					env.ClusterProvisioner)
 			}
+			if err := provisioners.ValidateProvisionerConfig(env.ClusterProvisioner, env.ClusterProvisionerArgs); err != nil {
+				return SanicConfig{}, fmt.Errorf(
+					"configuration file error: arguments provided to provisioner %s of type %s were invalid: %s",
+					envName, env.ClusterProvisioner, err.Error())
+			}
 		}
 	}
 	if cfg.Deploy.Folder == "" {

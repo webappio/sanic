@@ -1,6 +1,7 @@
 package provisioners
 
 import (
+	"fmt"
 	"github.com/distributed-containers-inc/sanic/provisioners/external"
 	"github.com/distributed-containers-inc/sanic/provisioners/localdev"
 )
@@ -40,6 +41,20 @@ var provisionerBuilders = map[string]provisionerBuilder{
 	},
 }
 
+type provisionerConfigValidator func(map[string]string) error
+
+var provisionerValidators = map[string]provisionerConfigValidator{
+	"localdev": func(args map[string]string) error {
+		for k := range args {
+			return fmt.Errorf("localdev takes no arguments, got %s", k)
+		}
+		return nil
+	},
+	"external": func(args map[string]string) error {
+		return external.ValidateConfig(args)
+	},
+}
+
 //ProvisionerExists checks whether the given provisioner exists
 func ProvisionerExists(name string) bool {
 	_, ok := provisionerBuilders[name]
@@ -58,4 +73,12 @@ func GetProvisionerNames() []string {
 //GetProvisioner returns the provisioner for the current environment
 func GetProvisioner(provisionerName string, provisionerArgs map[string]string) Provisioner {
 	return provisionerBuilders[provisionerName](provisionerArgs)
+}
+
+func ValidateProvisionerConfig(provisionerName string, provisionerArgs map[string]string) error {
+	validator, exists := provisionerValidators[provisionerName]
+	if !exists {
+		panic(fmt.Errorf("a provisioner did not have a validator defined: %s", provisionerName))
+	}
+	return validator(provisionerArgs)
 }
