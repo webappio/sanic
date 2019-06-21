@@ -66,7 +66,11 @@ func ValidateConfig(args map[string]string) error {
 	if _, err = os.Stat(config); err != nil {
 		return fmt.Errorf("configuration file at %s did not exist: %s", config, err.Error())
 	}
-	if _, exists = args["registry"]; !exists {
+	if reg, exists := args["registry"]; exists {
+		if !strings.HasPrefix(reg, "http://") && !strings.HasPrefix(reg, "https://") {
+			return fmt.Errorf("Registry needs to start with http:// (insecure) or https://")
+		}
+	} else {
 		return fmt.Errorf("configuration needs to include the registry to push to, i.e., https://registry.hub.docker.com/registryUserName")
 	}
 	return nil
