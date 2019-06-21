@@ -133,8 +133,8 @@ func (logger *flatfileLogger) logStatus(service string, status *client.VertexSta
 		statuses = append(statuses, s+"\n")
 	}
 	sort.Slice(statuses, func(i, j int) bool {
-		textI := statuses[i][strings.Index(statuses[i], "]")+3] //TODO HACK remove date
-		textJ := statuses[j][strings.Index(statuses[j], "]")+3]
+		textI := statuses[i][strings.Index(statuses[i], "]")+2:] //TODO HACK remove date
+		textJ := statuses[j][strings.Index(statuses[j], "]")+2:]
 		return textI < textJ
 	})
 	written, err := f.WriteString(strings.Join(statuses, ""))
@@ -148,7 +148,7 @@ func (logger *flatfileLogger) logStatus(service string, status *client.VertexSta
 	for _, listener := range logger.logLineListeners {
 		for i := 0; i < len(statuses); i++ {
 			statusText = statuses[i]
-			statusText = statusText[strings.Index(statusText, "]")+3:] //TODO HACK remove date
+			statusText = statusText[strings.Index(statusText, "]")+2:] //TODO HACK remove date
 		}
 		listener(service, statusText+"\n")
 	}
