@@ -2,7 +2,7 @@ environments:
   dev:
     commands:
     - name: print_dev
-      command: echo 'in dev!' 2 3 4
+      command: echo 'in dev!'
     clusterProvisioner: localdev
   prod:
     clusterProvisioner: external
