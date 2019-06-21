@@ -73,3 +73,9 @@ func ValidateConfig(args map[string]string) error {
 	}
 	return nil
 }
+
+//PruneWhileApplying is false, because we do *not* want to delete existing resources in the namespace!
+//It's assumed that in production the user will be in charge of taking their own namespaces down.
+func (*ProvisionerExternal) PruneWhileApplying() bool {
+	return false
+}

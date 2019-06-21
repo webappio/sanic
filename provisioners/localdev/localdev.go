@@ -91,3 +91,8 @@ func (provisioner *ProvisionerLocalDev) EdgeNodes() ([]string, error) {
 	}
 	return masterIPs, nil
 }
+
+//PruneWhileApplying is true because localdev is intended to be used with namespaces
+func (*ProvisionerLocalDev) PruneWhileApplying() bool {
+	return true
+}

@@ -118,8 +118,11 @@ func createNamespace(namespace string, provisioner provisioners.Provisioner) err
 }
 
 func kubectlApplyFolder(folder string, provisioner provisioners.Provisioner) error {
-	//TODO NOT PRODUCTION READY: --prune might be destructive
-	cmd := exec.Command("kubectl", "--kubeconfig", provisioner.KubeConfigLocation(), "apply", "-f", folder, "--prune", "--all")
+	args := []string{"--kubeconfig", provisioner.KubeConfigLocation(), "apply", "-f", folder}
+	if provisioner.PruneWhileApplying() {
+		args = append(args, "--prune", "--all")
+	}
+	cmd := exec.Command("kubectl", args...)
 	out := &bytes.Buffer{}
 	cmd.Stdout = out
 	cmd.Stderr = out
