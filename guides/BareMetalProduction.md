@@ -18,7 +18,8 @@ In particular, it will deploy the one in example/timestamp-as-a-service
 
 2. On the server (i.e., the terminal from step 1), [install Docker, configured to work with Kubernetes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/#docker)
 3. On the server, [install kubeadm: A tool to set up kubernetes](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl)
-4. On the server, `kubeadm --init`
+4. On the server, `kubeadm init --pod-network-cidr=10.244.0.0/16`
+5. On the server, `KUBECONFIG=/etc/kubernetes/admin.conf kubectl apply -f https://docs.projectcalico.org/v3.7/manifests/canal.yaml` 
 
 ## Developer PC configuration
 Now that we've configured the server, we have to set up our local computer.
