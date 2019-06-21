@@ -3,6 +3,7 @@ kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: redis
+  namespace: {{getenv "NAMESPACE"}}
   labels:
     k8s-app: redis
 spec:
@@ -29,6 +30,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: redis
+  namespace: {{getenv "NAMESPACE"}}
 spec:
   selector:
     k8s-app: redis
@@ -41,6 +43,7 @@ kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: web
+  namespace: {{getenv "NAMESPACE"}}
   labels:
     k8s-app: web
 spec:
@@ -67,6 +70,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: web
+  namespace: {{getenv "NAMESPACE"}}
 spec:
   selector:
     k8s-app: web
@@ -79,6 +83,7 @@ kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: api
+  namespace: {{getenv "NAMESPACE"}}
   labels:
     k8s-app: api
 spec:
@@ -105,6 +110,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: api
+  namespace: {{getenv "NAMESPACE"}}
 spec:
   selector:
     k8s-app: api
@@ -117,6 +123,7 @@ apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: web
+  namespace: {{getenv "NAMESPACE"}}
   annotations:
     traefik.ingress.kubernetes.io/rewrite-target: /
 spec:

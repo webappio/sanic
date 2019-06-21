@@ -26,6 +26,7 @@ type Environment struct {
 	// - external, an environment which has been set up with kubeadm on a server
 	ClusterProvisioner     string            `yaml:"clusterProvisioner"`
 	ClusterProvisionerArgs map[string]string `yaml:"clusterProvisionerArgs"`
+	Namespace              string
 }
 
 //Deploy handles configuration options for templating & saving the built kubernetes .yamls

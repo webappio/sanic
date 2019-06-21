@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 func clearYamlsFromDir(folderOut string) error {
@@ -30,32 +31,31 @@ func clearYamlsFromDir(folderOut string) error {
 	return nil
 }
 
-func runTemplater(folderIn, folderOut, templaterImage string) error {
+func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
+	if namespace == "" {
+		namespace = "<ERROR_NAMESPACE_NOT_DEFINED_IN_THIS_ENV>"
+	}
+
 	shl, err := shell.Current()
 	if err != nil {
 		return err
 	}
-
 	provisioner, err := getProvisioner()
 	if err != nil {
 		return err
 	}
-
 	registry, _, err := provisioner.Registry()
 	if err != nil {
 		return err
 	}
-
 	services, err := util.FindServices()
 	if err != nil {
 		return err
 	}
-
 	buildTag, err := git.GetCurrentTreeHash(shl.GetSanicRoot(), services...)
 	if err != nil {
 		return err
 	}
-
 	err = clearYamlsFromDir(folderOut)
 	if err != nil {
 		return err
@@ -77,6 +77,7 @@ func runTemplater(folderIn, folderOut, templaterImage string) error {
 		"-e", "REGISTRY_HOST="+registry,
 		"-e", "IMAGE_TAG="+buildTag,
 		"-e", "PROJECT_DIR="+provisioner.InClusterDir(shl.GetSanicRoot()),
+		"-e", "NAMESPACE="+namespace,
 		templaterImage,
 	)
 	stderrBuffer := &bytes.Buffer{}
@@ -104,6 +105,18 @@ func runTemplater(folderIn, folderOut, templaterImage string) error {
 	return nil
 }
 
+func createNamespace(namespace string, provisioner provisioners.Provisioner) error {
+	cmd := exec.Command("kubectl", "--kubeconfig", provisioner.KubeConfigLocation(), "create", "namespace", namespace)
+	out := &bytes.Buffer{}
+	cmd.Stdout = out
+	cmd.Stderr = out
+	err := cmd.Run()
+	if err != nil && !strings.Contains(out.String(), "AlreadyExists") {
+		return fmt.Errorf(strings.TrimSpace(out.String()))
+	}
+	return nil
+}
+
 func kubectlApplyFolder(folder string, provisioner provisioners.Provisioner) error {
 	//TODO NOT PRODUCTION READY: --prune might be destructive
 	cmd := exec.Command("kubectl", "--kubeconfig", provisioner.KubeConfigLocation(), "apply", "-f", folder, "--prune", "--all")
@@ -112,7 +125,7 @@ func kubectlApplyFolder(folder string, provisioner provisioners.Provisioner) err
 	cmd.Stderr = out
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf(out.String())
+		return fmt.Errorf(strings.TrimSpace(out.String()))
 	}
 	return nil
 }
@@ -122,11 +135,15 @@ func deployCommandAction(cliContext *cli.Context) error {
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
-
 	shl, err := shell.Current()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
+	env, err := cfg.CurrentEnvironment(shl)
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
+
 	folderIn, err := filepath.Abs(shl.GetSanicRoot() + "/" + cfg.Deploy.Folder + "/in")
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
@@ -144,9 +161,18 @@ func deployCommandAction(cliContext *cli.Context) error {
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
-	err = runTemplater(folderIn, folderOut, cfg.Deploy.TemplaterImage)
+	err = runTemplater(folderIn, folderOut, cfg.Deploy.TemplaterImage, env.Namespace)
 	if err != nil {
 		return cli.NewExitError(fmt.Sprintf("could not compile templates: %s", err.Error()), 1)
+	}
+	if env.Namespace != "" {
+		err = createNamespace(env.Namespace, provisioner)
+		if err != nil {
+			return cli.NewExitError(fmt.Sprintf(
+				"namespace %s defined in sanic.yaml for this environment couldn't be created: %s",
+				env.Namespace, err.Error(),
+			), 1)
+		}
 	}
 	err = kubectlApplyFolder(folderOut, provisioner)
 	if err != nil {
