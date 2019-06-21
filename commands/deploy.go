@@ -37,7 +37,7 @@ func runTemplater(folderIn, folderOut, templaterImage string) error {
 		return err
 	}
 
-	provisioner, err := provisioners.GetProvisioner()
+	provisioner, err := getProvisioner()
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func deployCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
-	provisioner, err := provisioners.GetProvisioner()
+	provisioner, err := getProvisioner()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}

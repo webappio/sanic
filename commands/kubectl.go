@@ -3,7 +3,6 @@ package commands
 import (
 	"errors"
 	"fmt"
-	"github.com/distributed-containers-inc/sanic/provisioners"
 	"github.com/urfave/cli"
 	"os"
 	"os/exec"
@@ -11,7 +10,7 @@ import (
 )
 
 func kubectlCommandAction(cliContext *cli.Context) error {
-	provisioner, err := provisioners.GetProvisioner()
+	provisioner, err := getProvisioner()
 	if err != nil {
 		return err
 	}

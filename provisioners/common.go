@@ -1,10 +1,8 @@
 package provisioners
 
 import (
-	"github.com/distributed-containers-inc/sanic/config"
+	"github.com/distributed-containers-inc/sanic/provisioners/external"
 	"github.com/distributed-containers-inc/sanic/provisioners/localdev"
-	"github.com/distributed-containers-inc/sanic/shell"
-	"github.com/pkg/errors"
 )
 
 //Provisioner is an interface which represents a way to deploy kubernetes services.
@@ -31,31 +29,33 @@ type Provisioner interface {
 	InClusterDir(hostDir string) string
 }
 
-var provisioners = map[string]Provisioner{
-	"localdev": &localdev.ProvisionerLocalDev{},
+type provisionerBuilder func(map[string]string) Provisioner
+
+var provisionerBuilders = map[string]provisionerBuilder{
+	"localdev": func(args map[string]string) Provisioner {
+		return &localdev.ProvisionerLocalDev{}
+	},
+	"external": func(args map[string]string) Provisioner {
+		return external.Create(args)
+	},
+}
+
+//ProvisionerExists checks whether the given provisioner exists
+func ProvisionerExists(name string) bool {
+	_, ok := provisionerBuilders[name]
+	return ok
+}
+
+//GetProvisionerNames returns a slice of all of the defined provisioner names.
+func GetProvisionerNames() []string {
+	var names []string
+	for k := range provisionerBuilders {
+		names = append(names, k)
+	}
+	return names
 }
 
 //GetProvisioner returns the provisioner for the current environment
-func GetProvisioner() (Provisioner, error) {
-	s, err := shell.Current()
-	if err != nil {
-		return nil, err
-	}
-
-	cfg, err := config.Read()
-	if err != nil {
-		return nil, err
-	}
-
-	env, err := cfg.CurrentEnvironment(s)
-	if err != nil {
-		return nil, err
-	}
-
-	if env.ClusterProvisioner == "" {
-		return nil, errors.New("the environment " + s.GetSanicEnvironment() +
-			" does not have a 'clusterProvisioner' key defined in it. Try clusterProvisioner: localdev to start.")
-	}
-
-	return provisioners[env.ClusterProvisioner], nil
+func GetProvisioner(provisionerName string, provisionerArgs map[string]string) Provisioner {
+	return provisionerBuilders[provisionerName](provisionerArgs)
 }

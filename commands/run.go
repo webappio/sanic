@@ -30,7 +30,7 @@ func runCommandAction(c *cli.Context) error {
 	for _, command := range env.Commands {
 		if command.Name == commandName {
 			code, err := s.ShellExec(command.Command, c.Args().Tail())
-			if code == 0 {
+			if err == nil {
 				return nil
 			}
 			return cli.NewExitError(err.Error(), code)

@@ -3,11 +3,13 @@ package config
 import (
 	"errors"
 	"fmt"
+	"github.com/distributed-containers-inc/sanic/provisioners"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 //Command is a configuration structure which consists of a name (e.g., print_hello) and a command (e.g., "echo hello")
@@ -21,8 +23,9 @@ type Environment struct {
 	Commands []Command
 	//Provisioner can be one of:
 	// - localdev, a kubernetes-in-docker environment suitable for local development, using "kind"
-	// - TODO prod environment docs
-	ClusterProvisioner string `yaml:"clusterProvisioner"`
+	// - external, an environment which has been set up with kubeadm on a server
+	ClusterProvisioner     string            `yaml:"clusterProvisioner"`
+	ClusterProvisionerArgs map[string]string `yaml:"clusterProvisionerArgs"`
 }
 
 //Deploy handles configuration options for templating & saving the built kubernetes .yamls
@@ -50,11 +53,15 @@ func ReadFromPath(configPath string) (SanicConfig, error) {
 		return SanicConfig{}, errors.New("configuration file error: " + err.Error())
 	}
 	for envName, env := range cfg.Environments {
-		if env.ClusterProvisioner != "localdev" && env.ClusterProvisioner != "" {
-			return SanicConfig{}, fmt.Errorf(
-				"configuration file error: environment %s's"+
-					" clusterProvisioner key must be one of 'localdev' or omitted, was: '%s'",
-				envName, env.ClusterProvisioner)
+		if env.ClusterProvisioner != "" {
+			if !provisioners.ProvisionerExists(env.ClusterProvisioner) {
+				return SanicConfig{}, fmt.Errorf(
+					"configuration file error: environment %s's"+
+						" clusterProvisioner key must be one of %s or omitted, was: '%s'",
+					envName,
+					strings.Join(provisioners.GetProvisionerNames(), ", "),
+					env.ClusterProvisioner)
+			}
 		}
 	}
 	if cfg.Deploy.Folder == "" {

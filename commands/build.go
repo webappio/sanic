@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/bridge/git"
 	"github.com/distributed-containers-inc/sanic/build"
-	"github.com/distributed-containers-inc/sanic/provisioners"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/distributed-containers-inc/sanic/util"
 	"github.com/urfave/cli"
@@ -15,7 +14,7 @@ import (
 )
 
 func getRegistry() (registry string, insecure bool, err error) {
-	provisioner, err := provisioners.GetProvisioner()
+	provisioner, err := getProvisioner()
 
 	if err != nil {
 		return

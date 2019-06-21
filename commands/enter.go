@@ -3,7 +3,6 @@ package commands
 import (
 	"bytes"
 	"fmt"
-	"github.com/distributed-containers-inc/sanic/provisioners"
 	"github.com/urfave/cli"
 	"os"
 	"os/exec"
@@ -21,7 +20,7 @@ func enterCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError(fmt.Sprintf("could not find kubectl, is it installed? %s", err.Error()), 1)
 	}
 
-	provisioner, err := provisioners.GetProvisioner()
+	provisioner, err := getProvisioner()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}

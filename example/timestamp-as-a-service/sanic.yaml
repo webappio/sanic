@@ -5,8 +5,11 @@ environments:
       command: echo 'in dev!' 2 3 4
     clusterProvisioner: localdev
   prod:
-    commands: []
-
+    clusterProvisioner: external
+    clusterProvisionerArgs:
+      registry: sanic.io
+      masters: sanic.io
+      kubeconfig: ~/.kube/sanic.io.config
 deploy:
   folder: "deploy"
   templaterImage: "sanic/templater-golang:latest"
