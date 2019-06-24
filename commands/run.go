@@ -1,9 +1,13 @@
 package commands
 
 import (
+	"fmt"
+	"github.com/agnivade/levenshtein"
 	"github.com/distributed-containers-inc/sanic/config"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/urfave/cli"
+	"sort"
+	"strings"
 )
 
 func runCommandAction(c *cli.Context) error {
@@ -27,6 +31,7 @@ func runCommandAction(c *cli.Context) error {
 	}
 
 	commandName := c.Args().First()
+	var commandNames []string
 	for _, command := range env.Commands {
 		if command.Name == commandName {
 			code, err := s.ShellExec(command.Command, c.Args().Tail())
@@ -35,8 +40,22 @@ func runCommandAction(c *cli.Context) error {
 			}
 			return cli.NewExitError(err.Error(), code)
 		}
+		commandNames = append(commandNames, command.Name)
 	}
-	return cli.NewExitError("Command "+commandName+" was not found in environment "+s.GetSanicEnvironment(), 1)
+	sort.Slice(commandNames, func(i, j int) bool {
+		distI := levenshtein.ComputeDistance(commandNames[i], commandName)
+		distJ := levenshtein.ComputeDistance(commandNames[j], commandName)
+		return distI < distJ
+	})
+	if len(commandNames) > 6 {
+		commandNames = commandNames[:6]
+	}
+	return cli.NewExitError(
+		fmt.Sprintf("Command %s was not found in environment %s. Did you mean one of [%s]?",
+			commandName,
+			s.GetSanicEnvironment(),
+			strings.Join(commandNames, "|"),
+		), 1)
 
 }
 
