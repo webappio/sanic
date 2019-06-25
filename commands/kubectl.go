@@ -41,7 +41,9 @@ func kubectlCommandAction(cliContext *cli.Context) error {
 
 	args := []string{kubeExecutableLocation}
 	if env, err := cfg.CurrentEnvironment(s); err == nil {
-		args = append(args, "--namespace="+env.Namespace)
+		if env.Namespace != "" {
+			args = append(args, "--namespace="+env.Namespace)
+		}
 	}
 	args = append(args, cliContext.Args()...)
 
