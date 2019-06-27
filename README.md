@@ -2,7 +2,7 @@
 
 # Sanic Omnitool
 
-Sanic is an all-in-one tool to build, test, and deploy software organized in a [Monorepo](https://en.wikipedia.org/wiki/Monorepo)
+Sanic is an all-in-one tool to develop, build, and deploy your Docker/Kubernetes projects.
 
 ## Why?
 
