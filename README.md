@@ -2,11 +2,7 @@
 
 # Sanic Omnitool
 
-Sanic is an all-in-one tool to build, test, and deploy software organized in a [Monorepo](https://en.wikipedia.org/wiki/Monorepo), where:
-
-1. The only things to be built are distinct [Docker](https://www.docker.com/) services with single Dockerfiles
-2. Deployment is done with [Kubernetes](https://kubernetes.io/)
-3. Unit tests are stored in Dockerfiles in a folder named "dockerfiles" in each service
+Sanic is an all-in-one tool to build, test, and deploy software organized in a [Monorepo](https://en.wikipedia.org/wiki/Monorepo)
 
 ## Why?
 
@@ -15,7 +11,10 @@ A lot of users of Docker/Kubernetes have similar requirements: Build a lot of do
 
 Each of those steps are currently painful: `docker build` is hard to parallelize well, templates are hard to learn and debug, and local multinode deployment requires lots of internal kubernetes knowledge. 
 
-*Sanic focuses on developer experience*. It has a plethora of features (live-mounting, template viewing, concurrent builds) which exist to make Docker/Kubernetes development just as fast as local development.
+*Sanic focuses on developer experience*:
+1. It volume mounts your source code into the containers in real time, so that you have to redeploy less often.
+2. It allows you to template your kubernetes configurations based on whatever your team is already comfortable with.
+3. It builds things really quickly, so that in the case you do need to build, it's as fast as possible.
 
 #### Concurrent builds
 Sanic discovers all Dockerfiles in your repository, and builds them in parallel using [buildkit](https://github.com/moby/buildkit).  This allows it to build incredibly quickly, and share layers across dockerfiles with ease.
@@ -24,9 +23,12 @@ It also generates a unique tag for every build, so that you can follow best prac
 
 
 #### Live-Mounting
-Sanic allows you to mount your source code inside of the containers running it in the `localdev` environment. The templater is run with the `PROJECT_DIR` environment variable set to the location of the project, so you can create a Kubernetes Volume from `$PROJECT_DIR/services/web` to `app/` and then enable source code reloading.
+Sanic allows you to mount your source code inside of the containers running it in the `localdev` environment.
+
+The templater is run with the `PROJECT_DIR` environment variable set to the location of the project, so you can create a Kubernetes Volume from `$PROJECT_DIR/services/web` to `app/` and then enable source code reloading.
 
 This allows you to overwrite the contents of the Dockerfile with your actual source code, so that changes immediately propagate, and you don't need to build/deploy after every change.
+
 
 #### Templating
 We believe that developers shouldn't have to learn a new templating language for every tool.  If you use Mako for your webserver, you should have web.yaml.mako to generate your kubernetes configuration.  This lets new developers ramp up faster.
