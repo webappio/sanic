@@ -92,6 +92,10 @@ func (iface *plaintextInterface) SucceedJob(service string) {
 	}
 }
 
+func (iface *plaintextInterface) SetPushing(service string) {
+	//plaintext interface does not show statuses, ignore
+}
+
 func (iface *plaintextInterface) ProcessLog(service, logLine string) {
 	iface.mutex.Lock()
 	defer iface.mutex.Unlock()

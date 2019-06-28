@@ -14,6 +14,7 @@ type interactiveInterfaceJob struct {
 	lastLogLines   *util.StringRingBuffer
 	linesDisplayed int //used at rendering time
 	status         string
+	pushing        bool
 	image          string
 	service        string
 }
@@ -161,7 +162,11 @@ func (iface *interactiveInterface) redrawScreen() {
 		if currRenderLine+1 >= height-2 {
 			break
 		}
-		displayAndTruncateString(currRenderLine, "[building] "+job.image, currStyle)
+		status := "[building]"
+		if job.pushing {
+			status = "[building/pushing]"
+		}
+		displayAndTruncateString(currRenderLine, status+" "+job.image, currStyle)
 		currRenderLine++
 		logLinesToDisplay := linesPerJob - 1
 		if numRemainderLines > 0 {
@@ -244,6 +249,15 @@ func (iface *interactiveInterface) SucceedJob(service string) {
 
 	if job, ok := iface.jobs[service]; ok {
 		job.status = "succeeded"
+	}
+}
+
+func (iface *interactiveInterface) SetPushing(service string) {
+	iface.mutex.Lock()
+	defer iface.mutex.Unlock()
+
+	if job, ok := iface.jobs[service]; ok {
+		job.pushing = true
 	}
 }
 

@@ -1,11 +1,14 @@
 environments:
   dev:
     commands:
-    - name: print_dev
+    - name: print_env
       command: echo 'in dev!'
     clusterProvisioner: localdev
     namespace: timestamp-as-a-service
   prod:
+    commands:
+    - name: print_env
+      command: echo 'in prod!'
     clusterProvisioner: external
     clusterProvisionerArgs:
       registry: sanic.io

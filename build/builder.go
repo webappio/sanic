@@ -131,6 +131,11 @@ func (builder *Builder) BuildService(ctx context.Context, serviceDir string) err
 					if !ok {
 						return nil
 					}
+					for _, status := range status.Statuses {
+						if status.ID == "pushing layers" {
+							builder.Interface.SetPushing(serviceName)
+						}
+					}
 					logErr := builder.Logger.ProcessStatus(serviceName, status)
 					if logErr != nil {
 						fmt.Fprintln(os.Stderr, logErr.Error())

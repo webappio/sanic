@@ -13,6 +13,8 @@ type Interface interface {
 	FailJob(service string, err error)
 	//SucceedJob marks a specific job as having succeeded. It will no longer receive any logs.
 	SucceedJob(service string)
+	//SetPushing marks a job as currently pushing
+	SetPushing(service string)
 	//ProcessLog handles a single log line
 	ProcessLog(service string, logLine string)
 	//Terminate this interface and close any resources it is using.
