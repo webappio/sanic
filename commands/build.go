@@ -36,6 +36,16 @@ func createBuildInterface(forceNoninteractive bool) build.Interface {
 //adapted from
 //https://web.archive.org/web/20190516153923/https://raw.githubusercontent.com/moby/buildkit/master/examples/build-using-dockerfile/main.go
 func buildCommandAction(cliContext *cli.Context) error {
+	registry := ""
+	registryInsecure := false
+	if cliContext.Bool("push") {
+		var err error
+		registry, registryInsecure, err = getRegistry()
+		if err != nil {
+			return cli.NewExitError(fmt.Sprintf("could not get registry to push to: %s", err.Error()), 1)
+		}
+	}
+
 	s, err := shell.Current()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
@@ -70,14 +80,6 @@ func buildCommandAction(cliContext *cli.Context) error {
 	defer buildLogger.Close()
 
 	jobs := make([]func(context.Context) error, 0, len(services))
-
-	registry, registryInsecure, err := getRegistry()
-	if err != nil {
-		if cliContext.Bool("push") {
-			return cli.NewExitError(fmt.Sprintf("could not get registry to push to: %s", err.Error()), 1)
-		}
-		registry = ""
-	}
 
 	builder := build.Builder{
 		Registry: registry,

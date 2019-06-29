@@ -2,6 +2,7 @@ package provisioners
 
 import (
 	"fmt"
+	"github.com/distributed-containers-inc/sanic/provisioners/dummy"
 	"github.com/distributed-containers-inc/sanic/provisioners/external"
 	"github.com/distributed-containers-inc/sanic/provisioners/localdev"
 )
@@ -37,25 +38,34 @@ type Provisioner interface {
 type provisionerBuilder func(map[string]string) Provisioner
 
 var provisionerBuilders = map[string]provisionerBuilder{
-	"localdev": func(args map[string]string) Provisioner {
-		return &localdev.ProvisionerLocalDev{}
+	"dummy": func(args map[string]string) Provisioner {
+		return &dummy.ProvisionerDummy{}
 	},
 	"external": func(args map[string]string) Provisioner {
 		return external.Create(args)
+	},
+	"localdev": func(args map[string]string) Provisioner {
+		return &localdev.ProvisionerLocalDev{}
 	},
 }
 
 type provisionerConfigValidator func(map[string]string) error
 
 var provisionerValidators = map[string]provisionerConfigValidator{
-	"localdev": func(args map[string]string) error {
+	"dummy": func(args map[string]string) error {
 		for k := range args {
-			return fmt.Errorf("localdev takes no arguments, got %s", k)
+			return fmt.Errorf("dummy takes no arguments, got %s", k)
 		}
 		return nil
 	},
 	"external": func(args map[string]string) error {
 		return external.ValidateConfig(args)
+	},
+	"localdev": func(args map[string]string) error {
+		for k := range args {
+			return fmt.Errorf("localdev takes no arguments, got %s", k)
+		}
+		return nil
 	},
 }
 
