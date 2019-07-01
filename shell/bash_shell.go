@@ -142,6 +142,7 @@ func (shell *BashShell) ShellExec(requestedCommand string, args []string) (error
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	cmd.Env = append(os.Environ(), extraShellEnvironmentVars(shell)...)
+	cmd.Dir = shell.sanicRoot
 	err = cmd.Start()
 	if err != nil {
 		errorCode = 1
