@@ -1,8 +1,11 @@
 package shell
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"os"
+	"os/exec"
+	"path/filepath"
 )
 
 //Shell represents, broadly, the current shell environment we're in (by having executed sanic env)
@@ -47,9 +50,15 @@ func Current() (Shell, error) {
 
 //New creates a new sanic shell environment to execute commands in or to enter.
 func New(sanicRoot, sanicConfig, sanicEnvironment string) (Shell, error) {
-	shellPath := os.Getenv("BASH")
-	if shellPath == "" {
-		return nil, errors.New("only bash is supported. Try typing 'bash' into your terminal")
+	shellPath := os.Getenv("SHELL")
+	shellName := filepath.Base(shellPath)
+	if shellName != "bash" {
+		fmt.Println("Warning: Bash is not your current shell, but it will be in a sanic environment.")
+		var err error
+		shellPath, err = exec.LookPath("fortune")
+		if err != nil {
+			return nil, fmt.Errorf("bash needs to be installed to use sanic: %s", err.Error())
+		}
 	}
 	return &BashShell{
 		Path:             shellPath,
