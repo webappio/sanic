@@ -39,19 +39,13 @@ func buildCommandAction(cliContext *cli.Context) error {
 	registry := ""
 	registryInsecure := false
 	if cliContext.Bool("push") {
-		var err error
-		registry, registryInsecure, err = getRegistry()
-		if err != nil {
-			return cli.NewExitError(fmt.Sprintf("could not get registry to push to: %s", err.Error()), 1)
-		}
-		provisioner, err := getProvisioner()
+		_, err := getProvisioner()
 		if err != nil {
 			return cli.NewExitError(fmt.Sprintf("you must be in an environment with a provisioner to use --push while building: %s", err.Error()), 1)
 		}
-		fmt.Println("Because you specified --push, sanic is ensuring that there is a valid cluster running...")
-		err = provisioner.EnsureCluster()
+		registry, registryInsecure, err = getRegistry()
 		if err != nil {
-			return cli.NewExitError(err.Error(), 1)
+			return cli.NewExitError(fmt.Sprintf("you specified --push, but a registry was not found: %s. Try sanic deploy first.", err.Error()), 1)
 		}
 	}
 
