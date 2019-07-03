@@ -59,6 +59,10 @@ func buildCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
+	if len(services) == 0 {
+		return cli.NewExitError("you must put sanic.yaml in a directory that contains a Dockerfile somewhere within it.", 1)
+	}
+
 	err = build.EnsureBuildkitDaemon()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
