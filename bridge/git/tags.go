@@ -56,7 +56,7 @@ func GetGitRoot(dir string) (string, error) {
 func GetCurrentTreeHash(rootDir string, unstagedFiles ...string) (string, error) {
 	rootDir, err := GetGitRoot(rootDir)
 	if err != nil {
-		return "", err
+		return "setup-git-for-unique-token", nil
 	}
 
 	tmpindex, err := ioutil.TempFile("", "sanicindex")
@@ -68,7 +68,7 @@ func GetCurrentTreeHash(rootDir string, unstagedFiles ...string) (string, error)
 	//See http://web.archive.org/web/20190606210911/https://stackoverflow.com/questions/23816330/compute-git-hash-of-all-uncommitted-code
 	currIndexData, err := ioutil.ReadFile(rootDir + "/.git/index")
 	if err != nil {
-		return "", err
+		return "commit-for-unique-token", nil
 	}
 	_, err = tmpindex.Write(currIndexData)
 	if err != nil {
