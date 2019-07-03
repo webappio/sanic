@@ -40,7 +40,7 @@ func (shell *BashShell) Enter() error {
 source ~/.bashrc
 
 if [ -z "${OLD_PROMPT_COMMAND+x}" ]; then
-  OLD_PROMPT_COMMAND="$PROMPT_COMMAND"
+  OLD_PROMPT_COMMAND="${PROMPT_COMMAND:-true}"
 fi
 if [ -z "${OLD_PS1+x}" ]; then
   OLD_PS1="$PS1"
