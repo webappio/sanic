@@ -74,7 +74,7 @@ func ReadFromPath(configPath string) (SanicConfig, error) {
 		cfg.Deploy.Folder = "deploy"
 	}
 	if cfg.Deploy.TemplaterImage == "" {
-		cfg.Deploy.TemplaterImage = "sanic/templater-golang"
+		cfg.Deploy.TemplaterImage = "distributedcontainers/templater-golang"
 	}
 	return cfg, nil
 }
