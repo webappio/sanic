@@ -22,7 +22,7 @@ func main() {
 
 	app.EnableBashCompletion = true
 
-	app.Version = "v1.2.7"
+	app.Version = "v1.2.8"
 	app.Usage = "build & deploy kubernetes monorepos"
 
 	err := app.Run(os.Args)

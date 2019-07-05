@@ -16,4 +16,4 @@ environments:
       kubeConfig: ~/.kube/sanic.io.config
 deploy:
   folder: "deploy"
-  templaterImage: "sanic/templater-golang:latest"
+  templaterImage: "distributedcontainers/templater-golang:latest"

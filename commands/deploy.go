@@ -31,6 +31,22 @@ func clearYamlsFromDir(folderOut string) error {
 	return nil
 }
 
+func pullImageIfNotExists(image string) error {
+	cmd := exec.Command("docker", "inspect", image)
+	if cmd.Run() == nil {
+		return nil //already exists
+	}
+	fmt.Println("Pulling the templater image "+image+"...")
+	cmd = exec.Command(
+		"docker",
+		"pull",
+		image,
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
 func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
 	if namespace == "" {
 		namespace = "<ERROR_NAMESPACE_NOT_DEFINED_IN_THIS_ENV>"
@@ -66,6 +82,15 @@ func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
 		return err
 	}
 	defer os.RemoveAll(tempFolderOut)
+
+	if !strings.Contains(templaterImage, ":") {
+		templaterImage = templaterImage+":latest"
+	}
+
+	err = pullImageIfNotExists(templaterImage)
+	if err != nil {
+		return fmt.Errorf("could not pull the templater image %s: %s", templaterImage, err)
+	}
 
 	cmd := exec.Command(
 		"docker",
