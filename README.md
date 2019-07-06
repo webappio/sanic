@@ -2,19 +2,17 @@
 
 # Sanic Omnitool
 
-Sanic is an all-in-one tool to develop, build, and deploy your Docker/Kubernetes projects.
+Sanic is an all-in-one tool to develop, build, and deploy your Docker/Kubernetes projects. *It focuses on developer experience*:
 
-## Why?
+1. It allows you to volume mount your source code into the containers in real time, so that you have to redeploy less often.
+2. It allows you to template your kubernetes configurations based on whatever your team is already comfortable with.
+3. It builds things really quickly, so that in the case you do need to build, it's as fast as possible.
 
-### Why Sanic
+
 A lot of users of Docker/Kubernetes have similar requirements: Build a lot of dockerfiles, template some kubernetes configurations, and then deploy them to a kubernetes cluster.
 
 Each of those steps are currently painful: `docker build` is hard to parallelize well, templates are hard to learn and debug, and local multinode deployment requires lots of internal kubernetes knowledge. 
 
-*Sanic focuses on developer experience*:
-1. It volume mounts your source code into the containers in real time, so that you have to redeploy less often.
-2. It allows you to template your kubernetes configurations based on whatever your team is already comfortable with.
-3. It builds things really quickly, so that in the case you do need to build, it's as fast as possible.
 
 #### Concurrent builds
 Sanic discovers all Dockerfiles in your repository, and builds them in parallel using [buildkit](https://github.com/moby/buildkit).  This allows it to build incredibly quickly, and share layers across dockerfiles with ease.
@@ -37,18 +35,6 @@ If your templating language isn't supported, you can create a new image and sani
 
 Built templates go into an /out folder, so if there are any errors, it's easy to see exactly where they are.
 
-### Why Docker
-It's easy enough to deploy a static website without docker, but deploying apps without Docker causes huge headaches:
-- Mismatched JDK versions break Java apps
-- Missing VirtualEnvs break Python apps
-- Differing gcc versions make it hard to build C/C++/other compiled apps (you need a file that says "how to build"!)
-
-Docker solves all of these things, at the expense of disk space -- it's the logical choice to build & run services
-
-### Why Kubernetes
-Docker itself is fine for single machines, but has very few features for running apps across multiple servers. It also lacks the ability to re-schedule crashed containers easily.  Kubernetes provides lots of abstractions over containers to let you say "I want 3 API servers running on 3 different machines, and a load balancer to select which ones are up"
-
-Another benefit is that Kubernetes is a decentralized analogue of Amazon Web Services, you can run it on premises, without internet, and change providers based on your needs.
 
 # Requirements
 
@@ -71,3 +57,54 @@ To try it out, clone this repository somewhere, then, in a bash shell:
 8. Navigate to the URL that was printed in step #4 to see the deployed webserver!
 
 Read more about this example in the `guides/BareMetalProduction.md` guide.  In particular, the configuration is explained there.
+
+### Configuration
+The only configuration file for sanic is the `sanic.yaml` file:
+```
+# the defined environments -- you should always define at least one
+environments:
+  # a developer environment, convention is to call it "dev"
+  dev:
+    # provisioners tell sanic how to push and deploy to a cluster.
+    # localdev automatically creates a local 3-node kubernetes cluster with a registry within your docker daemon
+    clusterProvisioner: localdev
+    # arbitrary shell scripts, defined per-environment
+    commands:
+      # executed by sanic run do_stuff
+    - name: do_stuff
+      command: ls -al | awk '{print $1}'
+  prod:
+    # external points to an existing kubernetes cluster and registry
+    clusterProvisioner: external
+    clusterProvisionerArgs:
+      # registry is either a dockerhub account name, or external registry
+      # (it's the prefix of built images)
+      registry: registry.company.com
+      # edgeNodes are places that ingress controllers are running. This can be left out.
+      edgeNodes: sanic.io
+      # kubeConfig is a kubectl config that should be used with this cluster
+      kubeConfig: ~/.kube/my.prod.config
+    commands:
+      # notice: commands can be multiline easily with yaml's block syntax
+    - name: setup_stuff
+      command: |
+        ls -al
+        pwd
+        ps aux
+# the deploy block tells sanic how to deal with your kubernetes resources
+deploy:
+  # for the "kustomize" template language, use "distributedcontainers/templater-kustomize"
+  # - https://github.com/distributed-containers-inc/sanic-templater-kustomize
+  #
+  # for the go language templates, use "distributedcontainers/templater-golang" 
+  # - https://github.com/distributed-containers-inc/sanic-templater-golang
+  #
+  # for any other language, feel free to make your own templater image and open an issue to have it included here.
+  templaterImage: distributedcontainers/templater-kustomize
+    
+```
+
+### Pushing
+Sanic will automatically push to the registry for the given environment's provisioner if you use `sanic build --push`
+
+Authentication is via `docker login`
