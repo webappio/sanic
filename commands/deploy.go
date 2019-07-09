@@ -181,6 +181,14 @@ func deployCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
+	if _, err := os.Stat(folderIn); err != nil {
+		return cli.NewExitError(fmt.Sprintf("The input folder at %s could not be read. Does it exist? %s", folderIn, err.Error()), 1)
+	}
+	err = os.MkdirAll(folderOut, 0750)
+	if err != nil {
+		return cli.NewExitError(fmt.Sprintf("The deployment output folder at %s could not be created: %s", folderOut, err.Error()), 1)
+	}
+
 	provisioner, err := getProvisioner()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
