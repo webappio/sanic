@@ -144,9 +144,6 @@ func createNamespace(namespace string, provisioner provisioners.Provisioner) err
 
 func kubectlApplyFolder(folder string, provisioner provisioners.Provisioner) error {
 	args := []string{"--kubeconfig", provisioner.KubeConfigLocation(), "apply", "-f", folder}
-	if provisioner.PruneWhileApplying() {
-		args = append(args, "--prune", "--all")
-	}
 	cmd := exec.Command("kubectl", args...)
 	out := &bytes.Buffer{}
 	cmd.Stdout = out

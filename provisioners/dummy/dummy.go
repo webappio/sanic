@@ -40,7 +40,3 @@ func (ProvisionerDummy) InClusterDir(hostDir string) string {
 	os.Exit(2)
 	return ""
 }
-
-func (ProvisionerDummy) PruneWhileApplying() bool {
-	return false
-}

@@ -30,9 +30,6 @@ type Provisioner interface {
 	//If a provisioner does not support live mounting, or has an error, it should return a descriptive error string
 	//I.e., if your sanic project is at /home/user/project, and provisioner is localdev, this returns /hosthome/project
 	InClusterDir(hostDir string) string
-
-	//PruneWhileApplying dictates whether "sanic deploy" will prune unreferenced pods. This is dangerous in production.
-	PruneWhileApplying() bool
 }
 
 type provisionerBuilder func(map[string]string) Provisioner
