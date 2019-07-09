@@ -75,9 +75,12 @@ func buildCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
-	buildTag, err := git.GetCurrentTreeHash(buildRoot, services...)
-	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
+	buildTag := cliContext.String("tag")
+	if buildTag == "" {
+		buildTag, err = git.GetCurrentTreeHash(buildRoot, services...)
+		if err != nil {
+			return cli.NewExitError(err.Error(), 1)
+		}
 	}
 
 	buildInterface := createBuildInterface(cliContext.Bool("plaintext"))
@@ -145,6 +148,10 @@ var buildCommand = cli.Command{
 		cli.BoolFlag{
 			Name:  "push",
 			Usage: "pushes to the configured registry for the current environment instead of loading locally",
+		},
+		cli.StringFlag{
+			Name: "tag,t",
+			Usage: "sets the tag of all built images to the specified one",
 		},
 		cli.BoolFlag{
 			Name: "verbose",
