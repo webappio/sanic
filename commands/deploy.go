@@ -64,7 +64,7 @@ func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
 	if err != nil {
 		return err
 	}
-	services, err := util.FindServices()
+	services, err := util.FindServices(shl.GetSanicRoot())
 	if err != nil {
 		return err
 	}

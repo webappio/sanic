@@ -49,18 +49,25 @@ func buildCommandAction(cliContext *cli.Context) error {
 		}
 	}
 
+	var buildRoot string
 	s, err := shell.Current()
 	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
+		fmt.Fprintln(os.Stderr, "[WARNING] sanic is building dockerfiles recursively in your current directory. It's recommended to use a sanic environment for consistency.")
+		buildRoot, err = os.Getwd()
+		if err != nil {
+			return cli.NewExitError(fmt.Sprintf("error while getting current directory: %s", err.Error()), 1)
+		}
+	} else {
+		buildRoot = s.GetSanicRoot()
 	}
 
-	services, err := util.FindServices()
+	services, err := util.FindServices(buildRoot)
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
 	if len(services) == 0 {
-		return cli.NewExitError("you must put sanic.yaml in a directory that contains a Dockerfile somewhere within it.", 1)
+		return cli.NewExitError(fmt.Sprintf("%s (or some of its subdirectories) should contain a Dockerfile"), 1)
 	}
 
 	err = build.EnsureBuildkitDaemon()
@@ -68,7 +75,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
-	buildTag, err := git.GetCurrentTreeHash(s.GetSanicRoot(), services...)
+	buildTag, err := git.GetCurrentTreeHash(buildRoot, services...)
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
@@ -82,7 +89,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 		}
 	}()
 
-	buildLogger := build.NewFlatfileLogger(filepath.Join(s.GetSanicRoot(), "logs"), cliContext.Bool("verbose"))
+	buildLogger := build.NewFlatfileLogger(filepath.Join(buildRoot, "logs"), cliContext.Bool("verbose"))
 	buildLogger.AddLogLineListener(buildInterface.ProcessLog)
 	defer buildLogger.Close()
 
