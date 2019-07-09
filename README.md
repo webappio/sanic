@@ -41,6 +41,7 @@ Built templates go into an /out folder, so if there are any errors, it's easy to
 1. [A recent docker client installed, and docker daemon running (i.e., "docker run" should work)](https://docs.docker.com/install/)
 2. Access to docker without needing `sudo` every time, e.g.., a sudoers NOPASSWD entry, being in the docker group, or running applicable sanic commands as root.  See [Manage Docker as a non-root user](https://docs.docker.com/install/linux/linux-postinstall/#manage-docker-as-a-non-root-user)
 3. [kubectl installed](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+
 ## Getting Started
 
 ### Timestamp as a Service
@@ -59,9 +60,11 @@ To try it out:
 10. Navigate to the URL that was printed in step #4 to see the deployed webserver!
 
 ### Download
+First, install the requirements from the requirements section above.
+
 To install from source, see the Timestamp as a Service example above.
 
-Otherwise, see [the sanic.io downloads page](https://sanic.io/downloads)
+Otherwise, see [the sanic.io downloads page](https://sanic.io/download)
 
 ### Configuration
 The only configuration file for sanic is the `sanic.yaml` file:
