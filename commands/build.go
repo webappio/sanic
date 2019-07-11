@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/bridge/git"
 	"github.com/distributed-containers-inc/sanic/build"
+	"github.com/distributed-containers-inc/sanic/config"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/distributed-containers-inc/sanic/util"
 	"github.com/urfave/cli"
@@ -61,7 +62,11 @@ func buildCommandAction(cliContext *cli.Context) error {
 		buildRoot = s.GetSanicRoot()
 	}
 
-	services, err := util.FindServices(buildRoot)
+	var ignorePaths []string
+	if cfg, err := config.Read(); err == nil {
+		ignorePaths = cfg.Build.IgnoreDirs
+	}
+	services, err := util.FindServices(buildRoot, ignorePaths)
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}

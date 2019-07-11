@@ -35,10 +35,15 @@ type Deploy struct {
 	TemplaterImage string `yaml:"templaterImage"`
 }
 
+type Build struct {
+	IgnoreDirs []string `yaml:"ignoreDirs"`
+}
+
 //SanicConfig is the global structure of entries in sanic.yaml
 type SanicConfig struct {
 	Environments map[string]Environment
 	Deploy       Deploy
+	Build        Build
 }
 
 //ReadFromPath returns a new SanicConfig from the given filesystem path to a yaml file

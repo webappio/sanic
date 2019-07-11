@@ -109,7 +109,14 @@ deploy:
   #
   # for any other language, feel free to make your own templater image and open an issue to have it included here.
   templaterImage: distributedcontainers/templater-kustomize
-    
+
+# the build block tells sanic how to build your resources
+build:
+ # ignore directories are specific directories (relative to the directory that contains sanic.yaml)
+ # this might also be useful if a directory has thousands of files, to improve build speed (i.e., node_modules)
+  ignoreDirs:
+  - some/directory
+  - node_modules
 ```
 
 ### Pushing

@@ -52,6 +52,10 @@ func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
 		namespace = "<ERROR_NAMESPACE_NOT_DEFINED_IN_THIS_ENV>"
 	}
 
+	cfg, err := config.Read()
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
 	shl, err := shell.Current()
 	if err != nil {
 		return err
@@ -64,7 +68,7 @@ func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
 	if err != nil {
 		return err
 	}
-	services, err := util.FindServices(shl.GetSanicRoot())
+	services, err := util.FindServices(shl.GetSanicRoot(), cfg.Build.IgnoreDirs)
 	if err != nil {
 		return err
 	}
