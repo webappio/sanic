@@ -46,7 +46,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 		}
 		registry, registryInsecure, err = getRegistry()
 		if err != nil {
-			return cli.NewExitError(fmt.Sprintf("you specified --push, but a registry was not found: %s. Try sanic deploy first.", err.Error()), 1)
+			return cli.NewExitError(fmt.Sprintf("you specified --push, but a registry was not found: %s. Try \"sanic deploy\" first.", err.Error()), 1)
 		}
 	}
 

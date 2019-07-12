@@ -70,6 +70,11 @@ func (provisioner *ProvisionerLocalDev) Registry() (registryAddr string, registr
 	if err != nil {
 		return
 	}
+	if ip == "" {
+		err = fmt.Errorf("the control plane was not running.")
+		return
+	}
+
 	registryAddr = fmt.Sprintf("%s:%d", ip, RegistryNodePort)
 	registryInsecure = true
 	return
