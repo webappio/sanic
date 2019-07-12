@@ -131,3 +131,6 @@ build:
 Sanic will automatically push to the registry for the given environment's provisioner if you use `sanic build --push`
 
 Authentication is via `docker login`
+
+### Support / Contact
+If you or your team are interested in using sanic, please feel free to schedule a call by emailing [support@sanic.io] -- we're continually adding features based on the needs of our first users.
