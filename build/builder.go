@@ -15,6 +15,7 @@ import (
 	"time"
 )
 
+//Builder uses buildkit to build a list of service directories
 type Builder struct {
 	Registry         string
 	RegistryInsecure bool
@@ -63,6 +64,7 @@ func (builder *Builder) buildkitSolveOpts(serviceDir, fullImageName string, writ
 	return solveOpt
 }
 
+//BuildService builds a specific sevice directory with a specific context
 func (builder *Builder) BuildService(ctx context.Context, serviceDir string) error {
 	serviceName := filepath.Base(serviceDir)
 	fullImageName := fmt.Sprintf("%s:%s", serviceName, builder.BuildTag)
@@ -74,18 +76,12 @@ func (builder *Builder) BuildService(ctx context.Context, serviceDir string) err
 
 	var resultR *io.PipeReader
 	var resultW *io.PipeWriter
-	var err error
 	if !builder.DoPush {
 		resultR, resultW = io.Pipe()
 	}
 	buildOpts := builder.buildkitSolveOpts(serviceDir, fullImageName, resultW)
-	if err != nil {
-		builder.Interface.FailJob(serviceName, err)
-		builder.Logger.Log(serviceName, time.Now(), "Could not configure pushing / saving for image! ", err.Error())
-		return err
-	}
 
-	err = util.RunContextuallyInParallel(
+	err := util.RunContextuallyInParallel(
 		ctx,
 		func(ctx context.Context) error {
 			buildkitClient, err := client.New(ctx, BuildkitDaemonAddr, client.WithFailFast())
@@ -113,10 +109,10 @@ func (builder *Builder) BuildService(ctx context.Context, serviceDir string) err
 			if !builder.DoPush {
 				cmd := exec.Command("docker", "load")
 				cmd.Stdin = resultR
-				if err = cmd.Start(); err != nil {
+				if err := cmd.Start(); err != nil {
 					return err
 				}
-				err = util.WaitCmdContextually(ctx, cmd)
+				err := util.WaitCmdContextually(ctx, cmd)
 				resultR.CloseWithError(err)
 				return err
 			}
