@@ -28,6 +28,7 @@ func EnsureBuildkitDaemon() error {
 	cmd := exec.Command("docker",
 		"run", "-d",
 		"--name", "sanic-buildkitd",
+		"--restart", "always",
 		"--privileged",
 		"--network", "host",
 		"-v", "sanic-buildkitd:/var/lib/buildkit",
