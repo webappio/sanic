@@ -99,6 +99,14 @@ environments:
         ls -al
         pwd
         ps aux
+
+# the global commands block defines commands for every environment.
+# note 1: environments can define a command of the same name to override these
+# note 2: you must be in an environment (sanic env) to use global commands
+commands:
+- name: do_stuff
+  command: ls -al
+
 # the deploy block tells sanic how to deal with your kubernetes resources
 deploy:
   # for the "kustomize" template language, use "distributedcontainers/templater-kustomize"

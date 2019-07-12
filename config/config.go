@@ -41,6 +41,7 @@ type Build struct {
 
 //SanicConfig is the global structure of entries in sanic.yaml
 type SanicConfig struct {
+	Commands     []Command
 	Environments map[string]Environment
 	Deploy       Deploy
 	Build        Build
