@@ -38,6 +38,6 @@ func EnsureBuildkitDaemon() error {
 	if err != nil {
 		return fmt.Errorf("could not start the builder docker image locally: %s\n%s", err.Error(), stderr.String())
 	}
-	time.Sleep(200 * time.Millisecond) //TODO HACK should poll for it to start instead of flat sleep
+	time.Sleep(500 * time.Millisecond) //TODO HACK should poll for it to start instead of flat sleep
 	return nil
 }
