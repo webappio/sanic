@@ -41,6 +41,8 @@ source ~/.bashrc
 
 if [ -z "${OLD_PROMPT_COMMAND+x}" ]; then
   OLD_PROMPT_COMMAND="${PROMPT_COMMAND:-true}"
+  # trim leading / trailing whitespace
+  OLD_PROMPT_COMMAND=$(echo -e "${OLD_PROMPT_COMMAND}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
 fi
 if [ -z "${OLD_PS1+x}" ]; then
   OLD_PS1="$PS1"
@@ -61,7 +63,7 @@ trap 'set -a; source "${SANIC_BASH_ENV_FILE}"; set +a' DEBUG
 # 2. save old PS1 (e.g., in case they don't set PS1, we don't want it to keep appending [dev]
 # 3. run their prompt command (if any)
 # 4. append [dev] in front
-PROMPT_COMMAND='status=$?; PS1="$OLD_PS1"; ( exit $status; ); '"$OLD_PROMPT_COMMAND"'; PS1="[$(basename $SANIC_ROOT) $SANIC_ENV] $PS1"; '
+PROMPT_COMMAND='status=$?; PS1="$OLD_PS1"; ( exit $status; ); '"${OLD_PROMPT_COMMAND}"'; PS1="[$(basename $SANIC_ROOT) $SANIC_ENV] $PS1"'
 `)
 
 	type TemplateData struct {
