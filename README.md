@@ -1,5 +1,6 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/distributed-containers-inc/sanic)](https://goreportcard.com/report/github.com/distributed-containers-inc/sanic)
-[![Slack channel](https://img.shields.io/badge/slack-%23sanic-green.svg)](https://app.slack.com/client/TLCSN8GUC/CLCSN9HCL)
+[![Slack channel](https://img.shields.io/badge/slack-%23sanic-green.svg)](https://distributedcontainers.slack.com)
+[![Support email](https://img.shields.io/badge/email-helpme%40sanic.io-blue.svg)](mailto:helpme@sanic.io)
 
 # Sanic Omnitool
 
@@ -132,6 +133,3 @@ build:
 Sanic will automatically push to the registry for the given environment's provisioner if you use `sanic build --push`
 
 Authentication is via `docker login`
-
-### Support / Contact
-If you or your team are interested in using sanic, please feel free to schedule a call by emailing [support@sanic.io] -- we're continually adding features based on the needs of our first users.
