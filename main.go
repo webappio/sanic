@@ -7,6 +7,10 @@ import (
 	"os"
 )
 
+//version is the version of this app.
+//Use --ldflags '-X main.version=(...)' with go build to update.
+var version = "master"
+
 func main() {
 
 	app := cli.NewApp()
@@ -22,7 +26,7 @@ func main() {
 
 	app.EnableBashCompletion = true
 
-	app.Version = "v1.2.8"
+	app.Version = version
 	app.Usage = "build & deploy kubernetes monorepos"
 
 	err := app.Run(os.Args)

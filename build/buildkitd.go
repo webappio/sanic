@@ -22,7 +22,6 @@ func waitBuildkitRunning() error {
 		return err
 	}
 	err = llb.WriteTo(dt, &dummyImageData)
-	fmt.Printf("Data is: %d\n", len(dummyImageData.String()))
 	if err != nil {
 		return err
 	}

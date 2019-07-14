@@ -183,7 +183,7 @@ func deployCommandAction(cliContext *cli.Context) error {
 	}
 
 	if _, err := os.Stat(folderIn); err != nil {
-		return cli.NewExitError(fmt.Sprintf("The input folder at %s could not be read. Does it exist? %s", folderIn, err.Error()), 1)
+		return cli.NewExitError(fmt.Sprintf("The input folder at %s could not be read. Does it exist? %s\nSee https://github.com/distributed-containers-inc/sanic-site for an example.", folderIn, err.Error()), 1)
 	}
 	err = os.MkdirAll(folderOut, 0750)
 	if err != nil {
