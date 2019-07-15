@@ -61,6 +61,9 @@ func runCommandAction(cliCtx *cli.Context) error {
 	commandName := cliCtx.Args().First()
 
 	if cmd, ok := commands[commandName]; ok {
+		if cmd.Command == "" {
+			return cli.NewExitError("Command "+commandName+" has an empty body in this environment.", 1)
+		}
 		code, err := s.ShellExec(cmd.Command, cliCtx.Args().Tail())
 		if err == nil {
 			return nil
