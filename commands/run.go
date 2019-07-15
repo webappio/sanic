@@ -38,10 +38,6 @@ func mostSimilarCommands(commands map[string]config.Command, requestedCommand st
 }
 
 func runCommandAction(cliCtx *cli.Context) error {
-	if cliCtx.NArg() == 0 {
-		return newUsageError(cliCtx)
-	}
-
 	s, err := shell.Current()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
@@ -58,7 +54,10 @@ func runCommandAction(cliCtx *cli.Context) error {
 	}
 
 	commands := commandsMap(&cfg, env)
-	commandName := cliCtx.Args().First()
+	var commandName string
+	if cliCtx.NArg() > 0 {
+		commandName = cliCtx.Args().First()
+	}
 
 	if cmd, ok := commands[commandName]; ok {
 		if cmd.Command == "" {
@@ -68,7 +67,7 @@ func runCommandAction(cliCtx *cli.Context) error {
 		if err == nil {
 			return nil
 		}
-		return cli.NewExitError(err.Error, code)
+		return cli.NewExitError("", code)
 	}
 
 	return cli.NewExitError(
