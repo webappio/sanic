@@ -72,7 +72,11 @@ func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
 	if err != nil {
 		return err
 	}
-	buildTag, err := git.GetCurrentTreeHash(shl.GetSanicRoot(), services...)
+	var serviceDirectories []string
+	for _, service := range services {
+		serviceDirectories = append(serviceDirectories, service.Dir)
+	}
+	buildTag, err := git.GetCurrentTreeHash(shl.GetSanicRoot(), serviceDirectories...)
 	if err != nil {
 		return err
 	}

@@ -3,17 +3,24 @@ package util
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+type BuildableService struct {
+	Dir        string
+	Dockerfile string
+	Name       string
+}
 
 //FindServices finds all of the buildable services in the given directory
 //(e.g., folders which contain a Dockerfile)
-func FindServices(dir string, ignorePaths []string) ([]string, error) {
+func FindServices(dir string, ignorePaths []string) ([]BuildableService, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
 	}
 
-	var ret []string
+	var ret []BuildableService
 
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		for _, ignorePath := range ignorePaths {
@@ -23,7 +30,18 @@ func FindServices(dir string, ignorePaths []string) ([]string, error) {
 		}
 
 		if info.Name() == "Dockerfile" {
-			ret = append(ret, filepath.Dir(path))
+			ret = append(ret, BuildableService{
+				Dir: filepath.Dir(path),
+				Dockerfile: "Dockerfile",
+				Name: filepath.Base(filepath.Dir(path)),
+			})
+		} else if strings.HasSuffix(info.Name(), ".Dockerfile") {
+			name := filepath.Base(filepath.Dir(path))+"-"+strings.TrimSuffix(info.Name(),".Dockerfile")
+			ret = append(ret, BuildableService{
+				Dir: filepath.Dir(path),
+				Dockerfile: info.Name(),
+				Name: name,
+			})
 		}
 		return nil
 	})

@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 )
 
@@ -25,11 +24,16 @@ type Builder struct {
 	DoPush           bool
 }
 
-func (builder *Builder) buildkitSolveOpts(serviceDir, fullImageName string, writer io.WriteCloser) *client.SolveOpt {
+func (builder *Builder) buildkitSolveOpts(
+	serviceDir, dockerfileName, fullImageName string,
+	writer io.WriteCloser) *client.SolveOpt {
 	solveOpt := &client.SolveOpt{
 		LocalDirs: map[string]string{
 			"context":    serviceDir,
 			"dockerfile": serviceDir,
+		},
+		FrontendAttrs: map[string]string{
+			"filename": dockerfileName,
 		},
 		Session: []session.Attachable{authprovider.NewDockerAuthProvider()},
 	}
@@ -65,13 +69,12 @@ func (builder *Builder) buildkitSolveOpts(serviceDir, fullImageName string, writ
 }
 
 //BuildService builds a specific sevice directory with a specific context
-func (builder *Builder) BuildService(ctx context.Context, serviceDir string) error {
-	serviceName := filepath.Base(serviceDir)
-	fullImageName := fmt.Sprintf("%s:%s", serviceName, builder.BuildTag)
+func (builder *Builder) BuildService(ctx context.Context, service util.BuildableService) error {
+	fullImageName := fmt.Sprintf("%s:%s", service.Name, builder.BuildTag)
 	if builder.Registry != "" {
-		fullImageName = fmt.Sprintf("%s/%s:%s", builder.Registry, serviceName, builder.BuildTag)
+		fullImageName = fmt.Sprintf("%s/%s:%s", builder.Registry, service.Name, builder.BuildTag)
 	}
-	builder.Interface.StartJob(serviceName, fullImageName)
+	builder.Interface.StartJob(service.Name, fullImageName)
 	statusChannel := make(chan *client.SolveStatus)
 
 	var resultR *io.PipeReader
@@ -79,28 +82,28 @@ func (builder *Builder) BuildService(ctx context.Context, serviceDir string) err
 	if !builder.DoPush {
 		resultR, resultW = io.Pipe()
 	}
-	buildOpts := builder.buildkitSolveOpts(serviceDir, fullImageName, resultW)
+	buildOpts := builder.buildkitSolveOpts(service.Dir, service.Dockerfile, fullImageName, resultW)
 
 	err := util.RunContextuallyInParallel(
 		ctx,
 		func(ctx context.Context) error {
 			buildkitClient, err := client.New(ctx, BuildkitDaemonAddr, client.WithFailFast())
 			if err != nil {
-				builder.Interface.FailJob(serviceName, err)
-				builder.Logger.Log(serviceName, time.Now(), "Could not connect to build daemon! ", err.Error())
+				builder.Interface.FailJob(service.Name, err)
+				builder.Logger.Log(service.Name, time.Now(), "Could not connect to build daemon! ", err.Error())
 				return err
 			}
-			builder.Logger.Log(serviceName, time.Now(), "Starting build of ", serviceDir)
+			builder.Logger.Log(service.Name, time.Now(), "Starting build of ", service.Dir)
 			solveStatus, err := buildkitClient.Build(ctx, *buildOpts, "", dockerfile.Build, statusChannel)
 			if solveStatus != nil {
 				//TODO if this is null should print a warning that we failed to push
 				//e.g., when we haven't deployed yet
 				for k, v := range solveStatus.ExporterResponse {
-					builder.Logger.Log(serviceName, time.Now(), fmt.Sprintf("exporter: %s=%s", k, v))
+					builder.Logger.Log(service.Name, time.Now(), fmt.Sprintf("exporter: %s=%s", k, v))
 				}
 			}
 			if err != nil {
-				builder.Logger.Log(serviceName, time.Now(), "FAILED: ", err.Error())
+				builder.Logger.Log(service.Name, time.Now(), "FAILED: ", err.Error())
 			}
 			return err
 		},
@@ -113,8 +116,7 @@ func (builder *Builder) BuildService(ctx context.Context, serviceDir string) err
 					return err
 				}
 				err := util.WaitCmdContextually(ctx, cmd)
-				resultR.CloseWithError(err)
-				return err
+				return resultR.CloseWithError(err)
 			}
 			return nil
 		},
@@ -129,10 +131,10 @@ func (builder *Builder) BuildService(ctx context.Context, serviceDir string) err
 					}
 					for _, status := range status.Statuses {
 						if status.ID == "pushing layers" {
-							builder.Interface.SetPushing(serviceName)
+							builder.Interface.SetPushing(service.Name)
 						}
 					}
-					logErr := builder.Logger.ProcessStatus(serviceName, status)
+					logErr := builder.Logger.ProcessStatus(service.Name, status)
 					if logErr != nil {
 						fmt.Fprintln(os.Stderr, logErr.Error())
 					}
@@ -142,11 +144,11 @@ func (builder *Builder) BuildService(ctx context.Context, serviceDir string) err
 	)
 
 	if err == nil {
-		builder.Interface.SucceedJob(serviceName)
-		builder.Logger.Log(serviceName, time.Now(), "Build succeeded!")
+		builder.Interface.SucceedJob(service.Name)
+		builder.Logger.Log(service.Name, time.Now(), "Build succeeded!")
 	} else if err != context.Canceled {
-		builder.Interface.FailJob(serviceName, err)
-		builder.Logger.Log(serviceName, time.Now(), "Build failed! ", err.Error())
+		builder.Interface.FailJob(service.Name, err)
+		builder.Logger.Log(service.Name, time.Now(), "Build failed! ", err.Error())
 	}
 	return err
 }

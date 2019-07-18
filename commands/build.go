@@ -82,7 +82,11 @@ func buildCommandAction(cliContext *cli.Context) error {
 
 	buildTag := cliContext.String("tag")
 	if buildTag == "" {
-		buildTag, err = git.GetCurrentTreeHash(buildRoot, services...)
+		var serviceDirs []string
+		for _, service := range services {
+			serviceDirs = append(serviceDirs, service.Dir)
+		}
+		buildTag, err = git.GetCurrentTreeHash(buildRoot, serviceDirs...)
 		if err != nil {
 			return cli.NewExitError(err.Error(), 1)
 		}
@@ -112,12 +116,12 @@ func buildCommandAction(cliContext *cli.Context) error {
 		DoPush: cliContext.Bool("push"),
 	}
 
-	for _, serviceDir := range services {
-		finalServiceDir := serviceDir
+	for _, service := range services {
+		finalService := service
 		jobs = append(jobs, func(ctx context.Context) error {
 			return builder.BuildService(
 				ctx,
-				finalServiceDir,
+				finalService,
 			)
 		})
 	}
