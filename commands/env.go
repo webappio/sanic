@@ -130,4 +130,6 @@ var environmentCommand = cli.Command{
 	ArgsUsage:    "[environment name] (single command to execute...)",
 	Action:       environmentCommandAction,
 	BashComplete: environmentCommandAutocomplete,
+	SkipArgReorder:  true,
+	SkipFlagParsing: true,
 }
