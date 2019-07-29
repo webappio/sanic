@@ -35,6 +35,18 @@ func findSanicConfig() (configPath string, err error) {
 	}
 }
 
+func checkConfigAndEnv(configFile, env string) error {
+	projectName := filepath.Base(filepath.Dir(configFile))
+	cfg, err := config.ReadFromPath(configFile)
+	if err != nil {
+		return err
+	}
+	if !cfg.HasEnvironment(env) {
+		return fmt.Errorf("environment %s does not exist in project %s", env, projectName)
+	}
+	return nil
+}
+
 func environmentCommandAction(c *cli.Context) error {
 	if c.NArg() == 0 {
 		return newUsageError(c)
@@ -44,10 +56,7 @@ func environmentCommandAction(c *cli.Context) error {
 
 	createNewShell := false
 	s, err := shell.Current()
-	if s != nil && err != nil {
-		return cli.NewExitError(err.Error(), 1)
-	}
-	if s == nil {
+	if err != nil {
 		createNewShell = true
 		configPath, err := findSanicConfig()
 		if err != nil {
@@ -56,21 +65,19 @@ func environmentCommandAction(c *cli.Context) error {
 		if configPath == "" {
 			return cli.NewExitError(fmt.Sprintf("this command requires a %s file in your current dirctory or a parent directory.", SanicConfigName), 1)
 		}
+		err = checkConfigAndEnv(configPath, newSanicEnv)
+		if err != nil {
+			return cli.NewExitError(err, 1)
+		}
 		sanicRoot := filepath.Dir(configPath)
 		s, err = shell.New(sanicRoot, configPath, newSanicEnv)
 		if err != nil {
 			return cli.NewExitError(err.Error(), 1)
 		}
 	}
-	cfg, err := config.ReadFromPath(s.GetSanicConfig())
+	err = checkConfigAndEnv(s.GetSanicConfig(), newSanicEnv)
 	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
-	}
-
-	if !cfg.HasEnvironment(newSanicEnv) {
-		return cli.NewExitError(fmt.Sprintf(
-			"environment %s does not exist in project %s", newSanicEnv, filepath.Base(s.GetSanicRoot())),
-			1)
+		return cli.NewExitError(err, 1)
 	}
 
 	if c.NArg() == 1 {
