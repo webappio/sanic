@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 )
 
-func getRegistry() (registryAddr string, registryInsecure bool, err error) {
+func getRegistry(cliContext *cli.Context) (registryAddr string, registryInsecure bool, err error) {
 	provisioner, err := getProvisioner()
 
 	if err != nil {
@@ -39,12 +39,15 @@ func createBuildInterface(forceNoninteractive bool) build.Interface {
 func buildCommandAction(cliContext *cli.Context) error {
 	registry := ""
 	registryInsecure := false
-	if cliContext.Bool("push") {
+	if addr := cliContext.String("registry"); addr != "" {
+		registry = addr
+	} else if cliContext.Bool("push") {
 		_, err := getProvisioner()
 		if err != nil {
 			return cli.NewExitError(fmt.Sprintf("you must be in an environment with a provisioner to use --push while building: %s", err.Error()), 1)
 		}
-		registry, registryInsecure, err = getRegistry()
+
+		registry, registryInsecure, err = getRegistry(cliContext)
 		if err != nil {
 			return cli.NewExitError(fmt.Sprintf("you specified --push, but a registry was not found: %s. Try \"sanic deploy\" first.", err.Error()), 1)
 		}
@@ -108,12 +111,12 @@ func buildCommandAction(cliContext *cli.Context) error {
 	jobs := make([]func(context.Context) error, 0, len(services))
 
 	builder := build.Builder{
-		Registry: registry,
+		Registry:         registry,
 		RegistryInsecure: registryInsecure,
-		BuildTag: buildTag,
-		Logger: buildLogger,
-		Interface: buildInterface,
-		DoPush: cliContext.Bool("push"),
+		BuildTag:         buildTag,
+		Logger:           buildLogger,
+		Interface:        buildInterface,
+		DoPush:           cliContext.Bool("push"),
 	}
 
 	for _, service := range services {
@@ -159,11 +162,15 @@ var buildCommand = cli.Command{
 			Usage: "pushes to the configured registry for the current environment instead of loading locally",
 		},
 		cli.StringFlag{
-			Name: "tag,t",
+			Name:  "tag,t",
 			Usage: "sets the tag of all built images to the specified one",
 		},
+		cli.StringFlag{
+			Name:  "registry",
+			Usage: "sets the registry of all built images to the specified one (i.e., for use with --push)",
+		},
 		cli.BoolFlag{
-			Name: "verbose",
+			Name:  "verbose",
 			Usage: "enables verbose logging, mostly for sanic development",
 		},
 	},
