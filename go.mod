@@ -15,6 +15,7 @@ require (
 	github.com/apache/thrift v0.12.0 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/containerd/cgroups v0.0.0-20190603164311-51b62d303d38 // indirect
+	github.com/containerd/containerd v1.3.0-0.20190426060238-3a3f0aac8819
 	github.com/containerd/fifo v0.0.0-20190226154929-a9fb20d87448 // indirect
 	github.com/containerd/go-runc v0.0.0-20190603165425-9007c2405372 // indirect
 	github.com/containerd/ttrpc v0.0.0-20190529185706-a5bd8ce9e40b // indirect
@@ -57,6 +58,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20190414153302-2ae31c8b6b30 // indirect
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
+	github.com/opencontainers/image-spec v1.0.1
 	github.com/opentracing-contrib/go-stdlib v0.0.0-20190519235532-cf7a6c988dc9 // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pelletier/go-toml v1.4.0 // indirect
