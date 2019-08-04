@@ -87,7 +87,7 @@ func (builder *Builder) BuildService(ctx context.Context, service util.Buildable
 	err := util.RunContextuallyInParallel(
 		ctx,
 		func(ctx context.Context) error {
-			buildkitClient, err := client.New(ctx, BuildkitDaemonAddr, client.WithFailFast())
+			buildkitClient, err := client.New(ctx, BuildkitDaemonAddr)
 			if err != nil {
 				builder.Interface.FailJob(service.Name, err)
 				builder.Logger.Log(service.Name, time.Now(), "Could not connect to build daemon! ", err.Error())

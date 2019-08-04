@@ -11,6 +11,7 @@ import (
 	"github.com/urfave/cli"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 func getRegistry(cliContext *cli.Context) (registryAddr string, registryInsecure bool, err error) {
@@ -108,8 +109,6 @@ func buildCommandAction(cliContext *cli.Context) error {
 	buildLogger.AddLogLineListener(buildInterface.ProcessLog)
 	defer buildLogger.Close()
 
-	jobs := make([]func(context.Context) error, 0, len(services))
-
 	builder := build.Builder{
 		Registry:         registry,
 		RegistryInsecure: registryInsecure,
@@ -119,21 +118,25 @@ func buildCommandAction(cliContext *cli.Context) error {
 		DoPush:           cliContext.Bool("push"),
 	}
 
+	var wg sync.WaitGroup
 	for _, service := range services {
 		finalService := service
-		jobs = append(jobs, func(ctx context.Context) error {
-			return builder.BuildService(
+		go func() {
+			ctx, cancelJob := context.WithCancel(context.Background())
+			buildInterface.AddCancelListener(cancelJob)
+			_ = builder.BuildService(
 				ctx,
 				finalService,
 			)
-		})
+			wg.Done()
+		}()
+		wg.Add(1)
 	}
 
 	userCancelledBuild := false
-	ctx, cancelJob := context.WithCancel(context.Background())
-	buildInterface.AddCancelListener(cancelJob)
 	buildInterface.AddCancelListener(func() { userCancelledBuild = true })
-	err = util.RunContextuallyInParallel(ctx, jobs...)
+
+	wg.Wait()
 
 	if userCancelledBuild {
 		fmt.Println() //clear the ^C

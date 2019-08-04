@@ -24,6 +24,7 @@ type interactiveInterface struct {
 	mutex           sync.Mutex
 	screen          tcell.Screen
 	screenStyle     tcell.Style
+	cancelled       bool
 	running         bool
 	cancelListeners []func()
 }
@@ -62,6 +63,7 @@ func NewInteractiveInterface() (Interface, error) {
 					for _, cancel := range iface.cancelListeners {
 						cancel()
 					}
+					iface.cancelled = true
 					return
 				}
 			}
@@ -203,23 +205,22 @@ func (iface *interactiveInterface) Close() {
 	iface.screen.Fini()
 	var serviceLogDirs []string
 	var serviceImages []string
-	anyJobsFailed := false
-	allJobsFailed := true
+	var failedJobs []string
 	for jobName, job := range iface.jobs {
 		serviceLogDirs = append(serviceLogDirs, fmt.Sprintf("logs/%s.log", jobName)) //TODO messy
 		serviceImages = append(serviceImages, job.image)
-		if job.status == "succeeded" {
-			allJobsFailed = false
-		} else {
-			anyJobsFailed = true
+		if job.status != "succeeded" {
+			failedJobs = append(failedJobs, jobName)
 		}
 	}
 
-	if allJobsFailed {
-		fmt.Printf("Failed to build some of the following jobs: %s\nSee the logs folder for details.\n", strings.Join(serviceLogDirs, ", "))
-	} else if !anyJobsFailed {
-		fmt.Printf("Successfully built: %s\n", strings.Join(serviceImages, " "))
-	} //otherwise, build was cancelled
+	if !iface.cancelled {
+		if len(failedJobs) > 0 {
+			fmt.Printf("Failed to build the following jobs: %s\nSee the logs folder for details.\n", strings.Join(failedJobs, ", "))
+		} else {
+			fmt.Printf("Successfully built: %s\n", strings.Join(serviceImages, " "))
+		}
+	}
 
 }
 
