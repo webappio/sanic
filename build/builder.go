@@ -3,9 +3,9 @@ package build
 import (
 	"context"
 	"fmt"
-	"github.com/distributed-containers-inc/sanic/build/buildkit"
 	"github.com/distributed-containers-inc/sanic/util"
 	"github.com/moby/buildkit/client"
+	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"io"
@@ -25,12 +25,15 @@ type Builder struct {
 }
 
 func (builder *Builder) buildkitSolveOpts(
-	serviceDir, fullImageName string,
+	serviceDir, dockerfileName, fullImageName string,
 	writer io.WriteCloser) *client.SolveOpt {
 	solveOpt := &client.SolveOpt{
 		LocalDirs: map[string]string{
 			"context":    serviceDir,
 			"dockerfile": serviceDir,
+		},
+		FrontendAttrs: map[string]string{
+			"filename": dockerfileName,
 		},
 		Session: []session.Attachable{authprovider.NewDockerAuthProvider()},
 	}
@@ -79,7 +82,7 @@ func (builder *Builder) BuildService(ctx context.Context, service util.Buildable
 	if !builder.DoPush {
 		resultR, resultW = io.Pipe()
 	}
-	buildOpts := builder.buildkitSolveOpts(service.Dir, fullImageName, resultW)
+	buildOpts := builder.buildkitSolveOpts(service.Dir, service.Dockerfile, fullImageName, resultW)
 
 	err := util.RunContextuallyInParallel(
 		ctx,
@@ -91,15 +94,7 @@ func (builder *Builder) BuildService(ctx context.Context, service util.Buildable
 				return err
 			}
 			builder.Logger.Log(service.Name, time.Now(), "Starting build of ", service.Dir)
-			solveStatus, err := buildkitClient.Build(
-				ctx,
-				*buildOpts,
-				"",
-				buildkit.Builder(&buildkit.BuilderOpts{
-					DockerfileName: service.Dockerfile,
-				}),
-				statusChannel,
-			)
+			solveStatus, err := buildkitClient.Build(ctx, *buildOpts, "", dockerfile.Build, statusChannel)
 			if solveStatus != nil {
 				//TODO if this is null should print a warning that we failed to push
 				//e.g., when we haven't deployed yet
