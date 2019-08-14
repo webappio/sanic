@@ -118,16 +118,21 @@ func buildCommandAction(cliContext *cli.Context) error {
 		DoPush:           cliContext.Bool("push"),
 	}
 
+  buildFailed := false
+
 	var wg sync.WaitGroup
 	for _, service := range services {
 		finalService := service
 		go func() {
 			ctx, cancelJob := context.WithCancel(context.Background())
 			buildInterface.AddCancelListener(cancelJob)
-			_ = builder.BuildService(
+      err := builder.BuildService(
 				ctx,
 				finalService,
 			)
+      if err != nil {
+        buildFailed = true
+      }
 			wg.Done()
 		}()
 		wg.Add(1)
@@ -143,8 +148,8 @@ func buildCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError("", 1)
 	}
 
-	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
+	if buildFailed {
+		return cli.NewExitError("", 1)
 	}
 
 	return nil
