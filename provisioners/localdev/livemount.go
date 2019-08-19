@@ -19,7 +19,7 @@ func (provisioner *ProvisionerLocalDev) liveMounts() []cri.Mount {
 			panic(err) //these errors are all catastrophic, like symlink loops in home folder!
 		}
 		liveMounts = append(liveMounts, cri.Mount{
-			ContainerPath: "/hosthome",
+			ContainerPath: "/host-home",
 			HostPath:      hostHome,
 			Readonly:      true,
 		})
@@ -27,11 +27,19 @@ func (provisioner *ProvisionerLocalDev) liveMounts() []cri.Mount {
 
 	if _, err := os.Stat("/mnt"); err == nil {
 		liveMounts = append(liveMounts, cri.Mount{
-			ContainerPath: "/mnt",
+			ContainerPath: "/host-mnt",
 			HostPath:      "/mnt",
 			Readonly:      true,
 		})
 	}
+
+	if _, err := os.Stat("/dev"); err == nil {
+		liveMounts = append(liveMounts, cri.Mount{
+			ContainerPath: "/dev",
+			HostPath:      "/dev",
+		})
+	}
+
 	return liveMounts
 }
 
