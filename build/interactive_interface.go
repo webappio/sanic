@@ -121,10 +121,11 @@ func (iface *interactiveInterface) redrawScreen() {
 	sortJobs(currJobs)
 
 	displayAndTruncateString := func(y int, s string, style tcell.Style) {
-		for i := 0; i < width && i < len(s); i++ {
-			iface.screen.SetContent(i, y, []rune(s)[i], []rune{}, style)
+		runes := []rune(s)
+		for i := 0; i < width && i < len(runes); i++ {
+			iface.screen.SetContent(i, y, runes[i], []rune{}, style)
 		}
-		for i := len(s); i < width; i++ {
+		for i := len(runes); i < width; i++ {
 			iface.screen.SetContent(i, y, ' ', []rune{}, style)
 		}
 	}
