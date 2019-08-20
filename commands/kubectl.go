@@ -1,12 +1,9 @@
 package commands
 
 import (
-	"fmt"
 	"github.com/distributed-containers-inc/sanic/config"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/urfave/cli"
-	"os"
-	"os/exec"
 	"syscall"
 )
 
@@ -25,29 +22,21 @@ func kubectlCommandAction(cliContext *cli.Context) error {
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
-	kubeConfigLocation := provisioner.KubeConfigLocation()
-	if _, err := os.Stat(kubeConfigLocation); os.IsNotExist(err) {
-		return cli.NewExitError("the kubernetes configuration doesn't exist yet, use sanic deploy first", 1)
-	}
-	kubeExecutableLocation, err := exec.LookPath("kubectl")
-	if err != nil {
-		return cli.NewExitError(fmt.Sprintf("could not find kubectl, is it installed? %s", err.Error()), 1)
-	}
 
-	env, err := getKubectlEnvironment()
-	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
-	}
-
-	args := []string{kubeExecutableLocation}
+	args := []string{}
 	if env, err := cfg.CurrentEnvironment(s); err == nil {
 		if env.Namespace != "" {
 			args = append(args, "--namespace="+env.Namespace)
 		}
 	}
-	args = append(args, cliContext.Args()...)
 
-	err = syscall.Exec(kubeExecutableLocation, args, env)
+	args = append(args, cliContext.Args()...)
+	cmd, err := provisioner.KubectlCommand(args...)
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
+
+	err = syscall.Exec(cmd.Path, cmd.Args, cmd.Env)
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}

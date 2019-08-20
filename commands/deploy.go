@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/bridge/git"
 	"github.com/distributed-containers-inc/sanic/config"
-	"github.com/distributed-containers-inc/sanic/provisioners"
+	"github.com/distributed-containers-inc/sanic/provisioners/provisioner"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/distributed-containers-inc/sanic/util"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"io/ioutil"
 	"math/rand"
@@ -138,25 +139,30 @@ func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
 	return nil
 }
 
-func createNamespace(namespace string, provisioner provisioners.Provisioner) error {
-	cmd := exec.Command("kubectl", "--kubeconfig", provisioner.KubeConfigLocation(), "create", "namespace", namespace)
+func createNamespace(namespace string, provisioner provisioner.Provisioner) error {
+	cmd, err := provisioner.KubectlCommand("create", "namespace", namespace)
+	if err != nil {
+		return errors.Wrapf(err, "error creating namespace %s", namespace)
+	}
 	out := &bytes.Buffer{}
 	cmd.Stdout = out
 	cmd.Stderr = out
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil && !strings.Contains(out.String(), "AlreadyExists") {
-		return fmt.Errorf(strings.TrimSpace(out.String()))
+		return errors.New(strings.TrimSpace(out.String()))
 	}
 	return nil
 }
 
-func kubectlApplyFolder(folder string, provisioner provisioners.Provisioner) error {
-	args := []string{"--kubeconfig", provisioner.KubeConfigLocation(), "apply", "-f", folder}
-	cmd := exec.Command("kubectl", args...)
+func kubectlApplyFolder(folder string, provisioner provisioner.Provisioner) error {
+	cmd, err := provisioner.KubectlCommand("apply", "-f", folder)
+	if err != nil {
+		return errors.Wrapf(err, "error while applying folder %s", folder)
+	}
 	out := &bytes.Buffer{}
 	cmd.Stdout = out
 	cmd.Stderr = out
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		return fmt.Errorf(strings.TrimSpace(out.String()))
 	}

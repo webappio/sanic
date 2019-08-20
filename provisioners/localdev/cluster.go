@@ -27,19 +27,20 @@ func clusterMasterNodes() ([]kindnode.Node, error) {
 }
 
 func (provisioner *ProvisionerLocalDev) checkClusterReady() error {
-	cmd := exec.Command(
-		"kubectl",
-		"--kubeconfig="+provisioner.KubeConfigLocation(),
+	cmd, err := provisioner.KubectlCommand(
 		"get",
 		"nodes",
 		"-o",
 		"jsonpath={.items..status.conditions[-1:].lastTransitionTime}\t{.items..status.conditions[-1:].status}",
 	)
+	if err != nil {
+		return err
+	}
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		return fmt.Errorf("could not check if the cluster was running: %s %s", err.Error(), stderr.String())
 	}

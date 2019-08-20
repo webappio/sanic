@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/util"
 	"os"
-	"os/exec"
 )
 
 const traefikIngressYaml = `
@@ -99,13 +98,15 @@ spec:
 `
 
 func (provisioner *ProvisionerLocalDev) startIngressController(ctx context.Context) error {
-	cmd := exec.Command("kubectl", "apply", "-f", "-")
-	cmd.Env = append(os.Environ(), "KUBECONFIG="+provisioner.KubeConfigLocation())
+	cmd, err := provisioner.KubectlCommand("apply", "-f", "-")
+	if err != nil {
+		return err
+	}
 	cmd.Stdin = bytes.NewBufferString(traefikIngressYaml)
 	errBuffer := &bytes.Buffer{}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = errBuffer
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return err
 	}

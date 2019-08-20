@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/config"
 	"github.com/distributed-containers-inc/sanic/provisioners"
+	"github.com/distributed-containers-inc/sanic/provisioners/provisioner"
 	"github.com/distributed-containers-inc/sanic/shell"
 	"github.com/urfave/cli"
-	"os"
 )
 
 func newUsageError(ctx *cli.Context) error {
@@ -21,19 +21,7 @@ func newUsageError(ctx *cli.Context) error {
 		1)
 }
 
-func getKubectlEnvironment() ([]string, error) {
-	provisioner, err := getProvisioner()
-	if err != nil {
-		return nil, err
-	}
-	kubeConfigLocation := provisioner.KubeConfigLocation()
-	if _, err := os.Stat(kubeConfigLocation); os.IsNotExist(err) {
-		return nil, errors.New("the kubernetes configuration doesn't exist yet, use sanic deploy first if in localdev")
-	}
-	return append(os.Environ(), "KUBECONFIG="+kubeConfigLocation), nil
-}
-
-func getProvisioner() (provisioners.Provisioner, error) {
+func getProvisioner() (provisioner.Provisioner, error) {
 	s, err := shell.Current()
 	if err != nil {
 		return nil, err

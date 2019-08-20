@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/distributed-containers-inc/sanic/provisioners"
+	"github.com/distributed-containers-inc/sanic/provisioners/provisioner"
 	"github.com/distributed-containers-inc/sanic/util"
+	"github.com/pkg/errors"
 	"os"
-	"os/exec"
 	"text/template"
 )
 
@@ -67,9 +67,12 @@ spec:
 `
 
 //StartRegistry : makes a pod definition using registry:2
-func StartRegistry(provisioner provisioners.Provisioner, ctx context.Context) error {
-	cmd := exec.Command("kubectl", "apply", "-f", "-")
-	cmd.Env = append(os.Environ(), "KUBECONFIG="+provisioner.KubeConfigLocation())
+func StartRegistry(provisioner provisioner.Provisioner, ctx context.Context) error {
+	cmd, err := provisioner.KubectlCommand("apply", "-f", "-")
+
+	if err != nil {
+		return errors.Wrap(err, "could not start the registry for this environment")
+	}
 
 	type yamlConfig struct {
 		RegistryNodePort int

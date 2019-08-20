@@ -3,7 +3,9 @@ package external
 import (
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/util"
+	"github.com/pkg/errors"
 	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -19,8 +21,17 @@ func (provisioner *ProvisionerExternal) EnsureCluster() error {
 	return nil
 }
 
-func (provisioner *ProvisionerExternal) KubeConfigLocation() string {
-	return provisioner.kubeConfigLocation
+//KubectlCommand for external just returns a provisioner that has KUBECONFIG pointing to the configured directory
+func (provisioner *ProvisionerExternal) KubectlCommand(args ...string) (*exec.Cmd, error) {
+	cmd := exec.Command("kubectl", args...)
+
+	kubeconfig := provisioner.kubeConfigLocation
+	if _, err := os.Stat(kubeconfig); err != nil {
+		return nil, errors.Wrapf(err, "could not find the kubeconfig at %s for this environment", kubeconfig)
+	}
+
+	cmd.Env = append(os.Environ(), "KUBECONFIG="+kubeconfig)
+	return cmd, nil
 }
 
 func (provisioner *ProvisionerExternal) Registry() (registryAddr string, registryInsecure bool, err error) {

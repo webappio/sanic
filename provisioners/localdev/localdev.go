@@ -5,6 +5,9 @@ import (
 	"fmt"
 	provisionerutil "github.com/distributed-containers-inc/sanic/provisioners/util"
 	"github.com/distributed-containers-inc/sanic/util"
+	"github.com/pkg/errors"
+	"os"
+	"os/exec"
 )
 
 //ProvisionerLocalDev is a provisioner which uses "kind" to set up a local, 4-node development kubernetes cluster
@@ -26,9 +29,15 @@ import (
 //  containerd to run pods
 type ProvisionerLocalDev struct{}
 
-//KubeConfigLocation : In ProvisionerLocalDev, returns kind's own generated configuration
-func (provisioner *ProvisionerLocalDev) KubeConfigLocation() string {
-	return kindContext.KubeConfigPath()
+//KubectlCommand : In ProvisionerLocalDev, returns kubectl pointing to kind's own generated configuration
+func (provisioner *ProvisionerLocalDev) KubectlCommand(args ...string) (*exec.Cmd, error) {
+	cmd := exec.Command("kubectl", args...)
+	configPath := kindContext.KubeConfigPath()
+	if _, err := os.Stat(configPath); err != nil {
+		return nil, errors.Wrap(err, "could not find the 'kind' kubernetes config - try 'sanic deploy' first.")
+	}
+	cmd.Env = append(os.Environ(), "KUBECONFIG="+configPath)
+	return cmd, nil
 }
 
 //EnsureCluster : In ProvisionerLocalDev, checks if kind containers are running. If not, runs kind init with cluster
