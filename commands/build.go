@@ -118,7 +118,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 		DoPush:           cliContext.Bool("push"),
 	}
 
-  buildFailed := false
+	buildFailed := false
 
 	var wg sync.WaitGroup
 	for _, service := range services {
@@ -126,13 +126,13 @@ func buildCommandAction(cliContext *cli.Context) error {
 		go func() {
 			ctx, cancelJob := context.WithCancel(context.Background())
 			buildInterface.AddCancelListener(cancelJob)
-      err := builder.BuildService(
+			err := builder.BuildService(
 				ctx,
 				finalService,
 			)
-      if err != nil {
-        buildFailed = true
-      }
+			if err != nil {
+				buildFailed = true
+			}
 			wg.Done()
 		}()
 		wg.Add(1)

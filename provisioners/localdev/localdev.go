@@ -3,6 +3,7 @@ package localdev
 import (
 	"context"
 	"fmt"
+	provisionerutil "github.com/distributed-containers-inc/sanic/provisioners/util"
 	"github.com/distributed-containers-inc/sanic/util"
 )
 
@@ -45,7 +46,7 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 		return err
 	}
 	err = util.RunContextuallyInParallel(context.Background(),
-		provisioner.startRegistry,
+		func(ctx context.Context) error { return provisionerutil.StartRegistry(provisioner, ctx) },
 		provisioner.patchRegistryContainers,
 		provisioner.startIngressController,
 	)
@@ -75,7 +76,7 @@ func (provisioner *ProvisionerLocalDev) Registry() (registryAddr string, registr
 		return
 	}
 
-	registryAddr = fmt.Sprintf("%s:%d", ip, RegistryNodePort)
+	registryAddr = fmt.Sprintf("%s:%d", ip, provisionerutil.RegistryNodePort)
 	registryInsecure = true
 	return
 }

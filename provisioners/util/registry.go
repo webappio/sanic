@@ -1,9 +1,10 @@
-package localdev
+package util
 
 import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/distributed-containers-inc/sanic/provisioners"
 	"github.com/distributed-containers-inc/sanic/util"
 	"os"
 	"os/exec"
@@ -65,7 +66,8 @@ spec:
   type: NodePort
 `
 
-func (provisioner *ProvisionerLocalDev) startRegistry(ctx context.Context) error {
+//StartRegistry : makes a pod definition using registry:2
+func StartRegistry(provisioner provisioners.Provisioner, ctx context.Context) error {
 	cmd := exec.Command("kubectl", "apply", "-f", "-")
 	cmd.Env = append(os.Environ(), "KUBECONFIG="+provisioner.KubeConfigLocation())
 
