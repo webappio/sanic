@@ -31,6 +31,9 @@ type ProvisionerLocalDev struct{}
 
 //KubectlCommand : In ProvisionerLocalDev, returns kubectl pointing to kind's own generated configuration
 func (provisioner *ProvisionerLocalDev) KubectlCommand(args ...string) (*exec.Cmd, error) {
+	if _, err := exec.LookPath("kubectl"); err != nil {
+		return nil, errors.Wrap(err, "could not find kubectl executable in path - is it installed?")
+	}
 	cmd := exec.Command("kubectl", args...)
 	configPath := kindContext.KubeConfigPath()
 	if _, err := os.Stat(configPath); err != nil {
@@ -55,7 +58,7 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 		return err
 	}
 	err = util.RunContextuallyInParallel(context.Background(),
-		func(ctx context.Context) error { return provisionerutil.StartRegistry(provisioner, ctx) },
+		func(ctx context.Context) error { return provisionerutil.StartRegistry(provisioner, ctx, map[string]string{"node-role.kubernetes.io/master": ""}) },
 		provisioner.patchRegistryContainers,
 		provisioner.startIngressController,
 	)

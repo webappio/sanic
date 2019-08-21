@@ -36,9 +36,9 @@ spec:
         name: sanic-registry
     spec:
       terminationGracePeriodSeconds: 10
-      hostNetwork: true
       nodeSelector:
-        node-role.kubernetes.io/master: ""
+        {{range $key, $value := .NodeSelectors}}{{$key}}: "{{$value}}"
+{{end}}
       tolerations:
       - key: node-role.kubernetes.io/master
         operator: Exists
@@ -67,7 +67,7 @@ spec:
 `
 
 //StartRegistry : makes a pod definition using registry:2
-func StartRegistry(provisioner provisioner.Provisioner, ctx context.Context) error {
+func StartRegistry(provisioner provisioner.Provisioner, ctx context.Context, nodeSelectors map[string]string) error {
 	cmd, err := provisioner.KubectlCommand("apply", "-f", "-")
 
 	if err != nil {
@@ -76,6 +76,7 @@ func StartRegistry(provisioner provisioner.Provisioner, ctx context.Context) err
 
 	type yamlConfig struct {
 		RegistryNodePort int
+		NodeSelectors map[string]string
 	}
 	t, err := template.New("").Parse(registryYaml)
 	if err != nil {
@@ -83,7 +84,7 @@ func StartRegistry(provisioner provisioner.Provisioner, ctx context.Context) err
 	}
 
 	stdinBuffer := &bytes.Buffer{}
-	err = t.Execute(stdinBuffer, &yamlConfig{RegistryNodePort: RegistryNodePort})
+	err = t.Execute(stdinBuffer, &yamlConfig{RegistryNodePort: RegistryNodePort, NodeSelectors: nodeSelectors})
 	if err != nil {
 		panic(err)
 	}

@@ -23,6 +23,10 @@ func (provisioner *ProvisionerExternal) EnsureCluster() error {
 
 //KubectlCommand for external just returns a provisioner that has KUBECONFIG pointing to the configured directory
 func (provisioner *ProvisionerExternal) KubectlCommand(args ...string) (*exec.Cmd, error) {
+	if _, err := exec.LookPath("kubectl"); err != nil {
+		return nil, errors.Wrap(err, "could not find kubectl executable in path - is it installed?")
+	}
+
 	cmd := exec.Command("kubectl", args...)
 
 	kubeconfig := provisioner.kubeConfigLocation
