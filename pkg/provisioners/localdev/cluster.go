@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/distributed-containers-inc/sanic/util"
+	"github.com/distributed-containers-inc/sanic/pkg/util"
 	"golang.org/x/sync/errgroup"
 	"os/exec"
 	"sigs.k8s.io/kind/pkg/cluster"

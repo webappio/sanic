@@ -1,8 +1,8 @@
 package commands
 
 import (
-	"github.com/distributed-containers-inc/sanic/config"
-	"github.com/distributed-containers-inc/sanic/shell"
+	"github.com/distributed-containers-inc/sanic/pkg/config"
+	"github.com/distributed-containers-inc/sanic/pkg/shell"
 	"github.com/urfave/cli"
 	"syscall"
 )

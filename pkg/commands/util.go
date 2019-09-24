@@ -3,10 +3,10 @@ package commands
 import (
 	"errors"
 	"fmt"
-	"github.com/distributed-containers-inc/sanic/config"
-	"github.com/distributed-containers-inc/sanic/provisioners"
-	"github.com/distributed-containers-inc/sanic/provisioners/provisioner"
-	"github.com/distributed-containers-inc/sanic/shell"
+	"github.com/distributed-containers-inc/sanic/pkg/config"
+	"github.com/distributed-containers-inc/sanic/pkg/provisioners"
+	"github.com/distributed-containers-inc/sanic/pkg/provisioners/provisioner"
+	"github.com/distributed-containers-inc/sanic/pkg/shell"
 	"github.com/urfave/cli"
 )
 

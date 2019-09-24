@@ -3,8 +3,8 @@ package commands
 import (
 	"fmt"
 	"github.com/agnivade/levenshtein"
-	"github.com/distributed-containers-inc/sanic/config"
-	"github.com/distributed-containers-inc/sanic/shell"
+	"github.com/distributed-containers-inc/sanic/pkg/config"
+	"github.com/distributed-containers-inc/sanic/pkg/shell"
 	"github.com/urfave/cli"
 	"sort"
 	"strings"

@@ -3,7 +3,7 @@ package build
 import (
 	"context"
 	"fmt"
-	"github.com/distributed-containers-inc/sanic/util"
+	"github.com/distributed-containers-inc/sanic/pkg/util"
 	"github.com/moby/buildkit/client"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	"github.com/moby/buildkit/session"

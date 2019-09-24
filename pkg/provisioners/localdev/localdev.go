@@ -3,8 +3,8 @@ package localdev
 import (
 	"context"
 	"fmt"
-	provisionerutil "github.com/distributed-containers-inc/sanic/provisioners/util"
-	"github.com/distributed-containers-inc/sanic/util"
+	provisionerutil "github.com/distributed-containers-inc/sanic/pkg/provisioners/util"
+	"github.com/distributed-containers-inc/sanic/pkg/util"
 	"github.com/pkg/errors"
 	"os"
 	"os/exec"

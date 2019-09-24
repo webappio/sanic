@@ -3,7 +3,7 @@ package build
 import (
 	"bytes"
 	"fmt"
-	"github.com/distributed-containers-inc/sanic/bridge/docker"
+	"github.com/distributed-containers-inc/sanic/pkg/bridge/docker"
 	"github.com/moby/buildkit/client/llb"
 	"os/exec"
 	"time"
