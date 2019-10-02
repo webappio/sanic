@@ -58,7 +58,9 @@ func (provisioner *ProvisionerLocalDev) EnsureCluster() error {
 		return err
 	}
 	err = util.RunContextuallyInParallel(context.Background(),
-		func(ctx context.Context) error { return provisionerutil.StartRegistry(provisioner, ctx, map[string]string{"node-role.kubernetes.io/master": ""}) },
+		func(ctx context.Context) error {
+			return provisionerutil.StartRegistry(provisioner, ctx, map[string]string{"node-role.kubernetes.io/master": ""})
+		},
 		provisioner.patchRegistryContainers,
 		provisioner.startIngressController,
 	)

@@ -76,7 +76,7 @@ func StartRegistry(provisioner provisioner.Provisioner, ctx context.Context, nod
 
 	type yamlConfig struct {
 		RegistryNodePort int
-		NodeSelectors map[string]string
+		NodeSelectors    map[string]string
 	}
 	t, err := template.New("").Parse(registryYaml)
 	if err != nil {

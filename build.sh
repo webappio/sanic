@@ -1,3 +1,6 @@
 #!/usr/bin/env sh
 
-go install --ldflags "-X main.version=$(git describe --abbrev=0 --tags)"
+set -eu -o pipefail
+
+echo "Building..."
+go install -v --ldflags "-X main.version=$(git describe --abbrev=0 --tags)" -mod=vendor
