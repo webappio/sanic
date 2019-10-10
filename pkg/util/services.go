@@ -31,16 +31,16 @@ func FindServices(dir string, ignorePaths []string) ([]BuildableService, error) 
 
 		if info.Name() == "Dockerfile" {
 			ret = append(ret, BuildableService{
-				Dir: filepath.Dir(path),
+				Dir:        filepath.Dir(path),
 				Dockerfile: "Dockerfile",
-				Name: filepath.Base(filepath.Dir(path)),
+				Name:       filepath.Base(filepath.Dir(path)),
 			})
 		} else if strings.HasSuffix(info.Name(), ".Dockerfile") {
-			name := filepath.Base(filepath.Dir(path))+"-"+strings.TrimSuffix(info.Name(),".Dockerfile")
+			name := filepath.Base(filepath.Dir(path)) + "-" + strings.TrimSuffix(info.Name(), ".Dockerfile")
 			ret = append(ret, BuildableService{
-				Dir: filepath.Dir(path),
+				Dir:        filepath.Dir(path),
 				Dockerfile: info.Name(),
-				Name: name,
+				Name:       name,
 			})
 		}
 		return nil

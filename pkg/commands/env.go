@@ -132,11 +132,11 @@ func environmentCommandAutocomplete(c *cli.Context) {
 }
 
 var environmentCommand = cli.Command{
-	Name:         "env",
-	Usage:        "change to a specific (e.g., dev or production) environment named in the configuration",
-	ArgsUsage:    "[environment name] (single command to execute...)",
-	Action:       environmentCommandAction,
-	BashComplete: environmentCommandAutocomplete,
+	Name:            "env",
+	Usage:           "change to a specific (e.g., dev or production) environment named in the configuration",
+	ArgsUsage:       "[environment name] (single command to execute...)",
+	Action:          environmentCommandAction,
+	BashComplete:    environmentCommandAutocomplete,
 	SkipArgReorder:  true,
 	SkipFlagParsing: true,
 }

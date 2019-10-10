@@ -10,10 +10,10 @@ import (
 )
 
 //ProvisionerExternal simply wraps an existing kubernetes cluster (accessed via kubectl) and registry
-type ProvisionerExternal struct{
+type ProvisionerExternal struct {
 	kubeConfigLocation string
-	edgeNodes []string
-	registry string
+	edgeNodes          []string
+	registry           string
 }
 
 //EnsureCluster does nothing for the external provisioner, basically by its definition
@@ -63,7 +63,7 @@ func Create(args map[string]string) *ProvisionerExternal {
 
 	provisioner := &ProvisionerExternal{
 		kubeConfigLocation: config,
-		registry: args["registry"],
+		registry:           args["registry"],
 	}
 	if edgeNodes, exists := args["edgeNodes"]; exists {
 		provisioner.edgeNodes = strings.Split(edgeNodes, ",")

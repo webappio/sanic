@@ -24,7 +24,7 @@ func (r *StringRingBuffer) Peek(num int) []string {
 
 	ret := make([]string, num)
 	for i := 0; i < num && i < len(r.buf); i++ {
-		ret[i] = r.buf[(start + i) % len(r.buf)]
+		ret[i] = r.buf[(start+i)%len(r.buf)]
 	}
 	return ret
 }

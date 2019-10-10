@@ -37,7 +37,7 @@ func pullImageIfNotExists(image string) error {
 	if cmd.Run() == nil {
 		return nil //already exists
 	}
-	fmt.Println("Pulling the templater image "+image+"...")
+	fmt.Println("Pulling the templater image " + image + "...")
 	cmd = exec.Command(
 		"docker",
 		"pull",
@@ -93,7 +93,7 @@ func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
 	defer os.RemoveAll(tempFolderOut)
 
 	if !strings.Contains(templaterImage, ":") {
-		templaterImage = templaterImage+":latest"
+		templaterImage = templaterImage + ":latest"
 	}
 
 	err = pullImageIfNotExists(templaterImage)
