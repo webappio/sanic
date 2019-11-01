@@ -1,24 +1,26 @@
 FROM ubuntu:18.04
 
 RUN apt-get update
-THEN RUN apt-get install -y --no-install-recommends \
+RUN apt-get install -y --no-install-recommends \
          ca-certificates curl g++ gcc libc6-dev make pkg-config
-
+CHECKPOINT
 
 # install go
 RUN curl -L "https://golang.org/dl/go1.13.linux-amd64.tar.gz" |\
     tar -C /usr/local -xzf /dev/stdin
-THEN ENV GOPATH=/go
-THEN ENV PATH=$GOPATH/bin:/usr/local/go/bin:$PATH
-THEN ENV GO111MODULE=on
+CHECKPOINT
+ENV GOPATH=/go
+ENV PATH=$GOPATH/bin:/usr/local/go/bin:$PATH
+ENV GO111MODULE=on
 
 WORKDIR /app
-THEN COPY . ./
-THEN RUN bash ./build.sh
+COPY . ./
+RUN bash ./build.sh
+CHECKPOINT
 
 COPY example /example
-THEN WORKDIR /example/timestamp-as-a-service
+WORKDIR /example/timestamp-as-a-service
 # TODO HACK: see issue #8
-THEN RUN mkdir -p ~/.kube && touch ~/.kube/sanic.io.config
-THEN RUN sanic env dev sanic run print_env | grep "in dev!"
+RUN mkdir -p ~/.kube && touch ~/.kube/sanic.io.config
+RUN sanic env dev sanic run print_env | grep "in dev!"
 ARTIFACT PUBLIC /go/bin/sanic
