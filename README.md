@@ -1,6 +1,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/distributed-containers-inc/sanic)](https://goreportcard.com/report/github.com/distributed-containers-inc/sanic)
 [![Slack channel](https://img.shields.io/badge/slack-%23sanic-green.svg)](https://distributedcontainers.slack.com)
 [![Support email](https://img.shields.io/badge/email-helpme%40sanic.io-blue.svg)](mailto:helpme@sanic.io)
+[![Acceptance tests](https://layerci.com/github/distributed-containers-inc/sanic/badge)](https://layerci.com/github/distributed-containers-inc/sanic)
 
 # Sanic Omnitool
 
