@@ -35,7 +35,7 @@ func (builder *Builder) buildkitSolveOpts(
 		FrontendAttrs: map[string]string{
 			"filename": dockerfileName,
 		},
-		Session: []session.Attachable{authprovider.NewDockerAuthProvider()},
+		Session: []session.Attachable{authprovider.NewDockerAuthProvider(os.Stderr)},
 	}
 
 	insecureString := "false"
@@ -60,7 +60,9 @@ func (builder *Builder) buildkitSolveOpts(
 				Attrs: map[string]string{
 					"name": fullImageName,
 				},
-				Output: writer,
+				Output: func(strings map[string]string) (io.WriteCloser, error) {
+					return writer, nil
+				},
 			},
 		}
 	}

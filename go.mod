@@ -25,15 +25,15 @@ require (
 	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mailru/easyjson v0.0.0-20190403194419-1ea4449da983 // indirect
-	github.com/moby/buildkit v0.5.1
+	github.com/moby/buildkit v0.6.3
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
+	github.com/opencontainers/runc v1.0.1-0.20190307181833-2b18fe1d885e // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/procfs v0.0.2 // indirect
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	github.com/spf13/cobra v0.0.4 // indirect
-	github.com/tonistiigi/fsutil v0.0.0-20190403235420-524c23dab726 // indirect
 	github.com/urfave/cli v1.20.0
 	golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5 // indirect
 	golang.org/x/net v0.0.0-20190603091049-60506f45cf65 // indirect
