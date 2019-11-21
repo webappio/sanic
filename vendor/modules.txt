@@ -22,7 +22,7 @@ github.com/PuerkitoBio/purell
 github.com/PuerkitoBio/urlesc
 # github.com/agnivade/levenshtein v1.0.2
 github.com/agnivade/levenshtein
-# github.com/containerd/containerd v1.3.0-0.20190426060238-3a3f0aac8819
+# github.com/containerd/containerd v1.3.0-0.20190507210959-7c1e88399ec0
 github.com/containerd/containerd/content
 github.com/containerd/containerd/content/local
 github.com/containerd/containerd/platforms
@@ -43,8 +43,15 @@ github.com/containerd/containerd/remotes
 github.com/containerd/containerd/remotes/docker
 github.com/containerd/containerd/labels
 github.com/containerd/containerd/reference
+github.com/containerd/containerd/remotes/docker/schema1
 github.com/containerd/containerd/version
-# github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc
+github.com/containerd/containerd/leases
+github.com/containerd/containerd/archive/compression
+github.com/containerd/containerd/metadata
+github.com/containerd/containerd/gc
+github.com/containerd/containerd/identifiers
+github.com/containerd/containerd/metadata/boltutil
+# github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6
 github.com/containerd/continuity
 github.com/containerd/continuity/devices
 github.com/containerd/continuity/driver
@@ -144,7 +151,7 @@ github.com/mailru/easyjson/jwriter
 github.com/mailru/easyjson/buffer
 # github.com/mattn/go-runewidth v0.0.4
 github.com/mattn/go-runewidth
-# github.com/moby/buildkit v0.5.1
+# github.com/moby/buildkit v0.6.3
 github.com/moby/buildkit/client
 github.com/moby/buildkit/client/llb
 github.com/moby/buildkit/frontend/dockerfile/builder
@@ -178,6 +185,7 @@ github.com/moby/buildkit/frontend/dockerfile/shell
 github.com/moby/buildkit/util/contentutil
 github.com/moby/buildkit/util/imageutil
 github.com/moby/buildkit/frontend/dockerfile/command
+github.com/moby/buildkit/util/leaseutil
 # github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.1
@@ -206,11 +214,13 @@ github.com/spf13/cobra
 github.com/spf13/pflag
 # github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2
 github.com/syndtr/gocapability/capability
-# github.com/tonistiigi/fsutil v0.0.0-20190403235420-524c23dab726
+# github.com/tonistiigi/fsutil v0.0.0-20190819224149-3d2716dd0a4d
 github.com/tonistiigi/fsutil/types
 github.com/tonistiigi/fsutil
 # github.com/urfave/cli v1.20.0
 github.com/urfave/cli
+# go.etcd.io/bbolt v1.3.2
+go.etcd.io/bbolt
 # golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/net v0.0.0-20190603091049-60506f45cf65
