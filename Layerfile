@@ -3,12 +3,10 @@ FROM vm/ubuntu:18.04
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
          ca-certificates curl g++ gcc libc6-dev make pkg-config
-CHECKPOINT
 
 # install go
 RUN curl -L "https://golang.org/dl/go1.13.linux-amd64.tar.gz" |\
     tar -C /usr/local -xzf /dev/stdin
-CHECKPOINT
 ENV GOPATH=/go
 ENV PATH=$GOPATH/bin:/usr/local/go/bin:$PATH
 ENV GO111MODULE=on
@@ -16,7 +14,6 @@ ENV GO111MODULE=on
 WORKDIR /app
 COPY . ./
 RUN bash ./build.sh
-CHECKPOINT
 
 COPY example /example
 WORKDIR /example/timestamp-as-a-service
