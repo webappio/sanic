@@ -1,8 +1,17 @@
 FROM vm/ubuntu:18.04
 
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends \
-         ca-certificates curl g++ gcc libc6-dev make pkg-config
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates curl g++ gcc libc6-dev make pkg-config \
+	apt-transport-https gnupg-agent software-properties-common && \
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - && \
+    sudo add-apt-repository \
+       "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+       $(lsb_release -cs) \
+       stable" && \
+    apt-get update && \
+    apt-get install -y docker-ce docker-ce-cli containerd.io
+
 
 # install go
 RUN curl -L "https://golang.org/dl/go1.13.linux-amd64.tar.gz" |\
@@ -20,4 +29,6 @@ WORKDIR /example/timestamp-as-a-service
 # TODO HACK: see issue #8
 RUN mkdir -p ~/.kube && touch ~/.kube/sanic.io.config
 RUN sanic env dev sanic run print_env | grep "in dev!"
+RUN stty rows 30 && \
+    sanic env dev sanic build
 ARTIFACT PUBLIC /go/bin/sanic
