@@ -29,6 +29,5 @@ WORKDIR /example/timestamp-as-a-service
 # TODO HACK: see issue #8
 RUN mkdir -p ~/.kube && touch ~/.kube/sanic.io.config
 RUN sanic env dev sanic run print_env | grep "in dev!"
-RUN stty rows 30 && \
-    sanic env dev sanic build
+RUN sanic env dev sanic build
 ARTIFACT PUBLIC /go/bin/sanic
