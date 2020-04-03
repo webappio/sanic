@@ -22,6 +22,7 @@ ENV GO111MODULE=on
 
 WORKDIR /app
 COPY . ./
+CACHE ~/.cache
 RUN bash ./build.sh
 
 COPY example /example
