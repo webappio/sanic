@@ -32,10 +32,10 @@ func (provisioner *ProvisionerK3s) KubectlCommand(args ...string) (*exec.Cmd, er
 
 func (provisioner *ProvisionerK3s) Registry() (registryAddr string, registryInsecure bool, err error) {
 	cmd, err := provisioner.KubectlCommand(
-		"get", "service",
+		"get", "pod",
 		"--namespace", "kube-system",
-		"sanic-registry",
-		"--output", "jsonpath={.spec.clusterIP}",
+		"--selector", "k8s-app=sanic-registry",
+		"--output", "jsonpath={.items[0].status.podIP}",
 	)
 	if err != nil {
 		return

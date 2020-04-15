@@ -13,8 +13,6 @@ import (
 
 //RegistryNodePort is the port at which the registry is accessible on all of the nodes
 // (for performance, connect to this port on specifically the master node from the host)
-const RegistryNodePort = 31653
-
 const registryYaml = `
 ---
 kind: Deployment
@@ -49,21 +47,6 @@ spec:
         ports:
         - name: registry
           containerPort: 5000
-
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: sanic-registry
-  namespace: kube-system
-spec:
-  selector:
-    k8s-app: sanic-registry
-  ports:
-  - protocol: TCP
-    port: 5000
-    nodePort: {{.RegistryNodePort}}
-  type: NodePort
 `
 
 //StartRegistry : makes a pod definition using registry:2
@@ -84,7 +67,7 @@ func StartRegistry(provisioner provisioner.Provisioner, ctx context.Context, nod
 	}
 
 	stdinBuffer := &bytes.Buffer{}
-	err = t.Execute(stdinBuffer, &yamlConfig{RegistryNodePort: RegistryNodePort, NodeSelectors: nodeSelectors})
+	err = t.Execute(stdinBuffer, &yamlConfig{NodeSelectors: nodeSelectors})
 	if err != nil {
 		panic(err)
 	}

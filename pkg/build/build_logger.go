@@ -2,13 +2,10 @@ package build
 
 import (
 	"fmt"
-	"github.com/moby/buildkit/client"
 	"github.com/pkg/errors"
-	"io"
 	"math"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -17,7 +14,6 @@ import (
 //Logger takes log messages from the buildkit build server(s) and stores them
 type Logger interface {
 	Log(service string, when time.Time, message ...interface{}) error
-	ProcessStatus(service string, status *client.SolveStatus) error
 	Close()
 	AddLogLineListener(func(service, logLine string))
 }
@@ -96,110 +92,6 @@ func humanReadableBytes(bytes int64) string {
 	}
 	place := math.Logb(math.Abs(float64(bytes))) / 10
 	return fmt.Sprintf("%.2f%s", float64(bytes)/math.Pow(1024, math.Floor(place)), suf[int64(place)])
-}
-
-func (logger *flatfileLogger) logStatus(service string, status *client.VertexStatus) error {
-	f, err := logger.logFile(service)
-	if err != nil {
-		return err
-	}
-
-	logger.mutex.Lock()
-	defer logger.mutex.Unlock()
-
-	var idText string
-	if strings.HasPrefix(status.ID, "sha256:") {
-		idText = status.ID[7:19]
-	} else {
-		idText = status.ID
-	}
-
-	var statusText string
-	if status.Total != 0 {
-		statusText = fmt.Sprintf("%s %s/%s", idText, humanReadableBytes(status.Current), humanReadableBytes(status.Total))
-	} else {
-		statusText = fmt.Sprintf("%s %s", idText, humanReadableBytes(status.Current))
-	}
-	statusTextTimestamp := fmt.Sprintf("[%s] %s", status.Timestamp.In(time.Local), statusText)
-
-	if status.Completed != nil {
-		delete(logger.currVertexStatuses, status.ID)
-		_, err = f.WriteString(statusTextTimestamp + "\n")
-	} else {
-		logger.currVertexStatuses[status.ID] = statusTextTimestamp
-	}
-	var statuses []string
-	for _, s := range logger.currVertexStatuses {
-		statuses = append(statuses, s+"\n")
-	}
-	sort.Slice(statuses, func(i, j int) bool {
-		textI := statuses[i][strings.Index(statuses[i], "]")+2:] //TODO HACK remove date
-		textJ := statuses[j][strings.Index(statuses[j], "]")+2:]
-		return textI < textJ
-	})
-	written, err := f.WriteString(strings.Join(statuses, ""))
-	if err != nil {
-		return err
-	}
-	_, err = f.Seek(-int64(written), io.SeekCurrent)
-	if err != nil {
-		return err
-	}
-	for _, listener := range logger.logLineListeners {
-		for i := 0; i < len(statuses); i++ {
-			statusText = statuses[i]
-			statusText = statusText[strings.Index(statusText, "]")+2:] //TODO HACK remove date
-		}
-		listener(service, statusText+"\n")
-	}
-	return nil
-}
-
-func (logger *flatfileLogger) ProcessStatus(service string, status *client.SolveStatus) error {
-	for _, v := range status.Vertexes { //e.g., [6/6] ADD app.py ./
-		if logger.verbose {
-			logger.Log(service, time.Now(), fmt.Sprintf("Vertex: '%s',  '%s',  '%s'", v.Name, v.Error, v.Digest.String()))
-		}
-		if strings.Index(v.Name, "[internal]") != 0 { //TODO HACK these are annoying
-			logMessage := v.Name
-			if v.Cached {
-				logMessage = "cached: " + logMessage
-			}
-			if v.Error != "" {
-				if err := logger.Log(service, time.Now(), fmt.Sprintf("%s: LAYERID=%s", v.Error, v.Digest.String())); err != nil {
-					return errors.Errorf("Could not log failure to %s's logs: %s", service, err.Error())
-				}
-			}
-			if err := logger.Log(service, time.Now(), logMessage); err != nil {
-				return errors.Errorf("Could not write to %s's logs: %s", service, err.Error())
-			}
-		}
-	}
-
-	for _, vs := range status.Statuses {
-		if logger.verbose {
-			logger.Log(service, time.Now(),
-				fmt.Sprintf(
-					"Status: '%s'.  '%s',  '%s',  (curr=%d, total=%d)",
-					vs.Name, vs.ID, vs.Vertex.String(), vs.Current, vs.Total,
-				),
-			)
-		}
-		if err := logger.logStatus(service, vs); err != nil {
-			return errors.Errorf("Could not status to %s's logs: %s", service, err.Error())
-		}
-	}
-
-	for _, log := range status.Logs {
-		if logger.verbose {
-			logger.Log(service, time.Now(), fmt.Sprintf("Log: '%s',  '%s'", string(log.Data), log.Vertex.String()))
-		}
-		logMessage := string(log.Data)
-		if err := logger.Log(service, log.Timestamp, strings.Trim(logMessage, "\r\n")); err != nil {
-			return errors.Errorf("Could not write to %s's logs: %s", service, err.Error())
-		}
-	}
-	return nil
 }
 
 func (logger *flatfileLogger) Close() {

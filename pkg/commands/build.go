@@ -79,11 +79,6 @@ func buildCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError(fmt.Sprintf("%s (or some of its subdirectories) should contain a Dockerfile"), 1)
 	}
 
-	err = build.EnsureBuildkitDaemon()
-	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
-	}
-
 	buildTag := cliContext.String("tag")
 	if buildTag == "" {
 		var serviceDirs []string
