@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/distributed-containers-inc/sanic/pkg/provisioners/external"
 	"github.com/distributed-containers-inc/sanic/pkg/provisioners/k3s"
-	"github.com/distributed-containers-inc/sanic/pkg/provisioners/localdev"
 	"github.com/distributed-containers-inc/sanic/pkg/provisioners/provisioner"
 )
 
@@ -17,9 +16,6 @@ var provisionerBuilders = map[string]provisionerBuilder{
 	"k3s": func(args map[string]string) provisioner.Provisioner {
 		return &k3s.ProvisionerK3s{}
 	},
-	"localdev": func(args map[string]string) provisioner.Provisioner {
-		return &localdev.ProvisionerLocalDev{}
-	},
 }
 
 type provisionerConfigValidator func(map[string]string) error
@@ -31,12 +27,6 @@ var provisionerValidators = map[string]provisionerConfigValidator{
 	"k3s": func(args map[string]string) error {
 		for k := range args {
 			return fmt.Errorf("k3s takes no arguments, got %s", k)
-		}
-		return nil
-	},
-	"localdev": func(args map[string]string) error {
-		for k := range args {
-			return fmt.Errorf("localdev takes no arguments, got %s", k)
 		}
 		return nil
 	},

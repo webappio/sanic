@@ -22,7 +22,7 @@ type Command struct {
 type Environment struct {
 	Commands []Command
 	//Provisioner can be one of:
-	// - localdev, a kubernetes-in-docker environment suitable for local development, using "kind"
+	// - k3s, which uses "k3s.kubectl" commands, or
 	// - external, an environment which has been set up with kubeadm on a server
 	ClusterProvisioner     string            `yaml:"clusterProvisioner"`
 	ClusterProvisionerArgs map[string]string `yaml:"clusterProvisionerArgs"`

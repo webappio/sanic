@@ -3,7 +3,7 @@ environments:
     commands:
     - name: print_env
       command: echo 'in dev!'
-    clusterProvisioner: localdev
+    clusterProvisioner: k3s
     namespace: timestamp-as-a-service
   prod:
     commands:
