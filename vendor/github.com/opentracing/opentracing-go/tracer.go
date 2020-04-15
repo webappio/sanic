@@ -44,7 +44,8 @@ type Tracer interface {
 	// and each has an expected carrier type.
 	//
 	// Other packages may declare their own `format` values, much like the keys
-	// used by `context.Context` (see https://godoc.org/context#WithValue).
+	// used by `context.Context` (see
+	// https://godoc.org/golang.org/x/net/context#WithValue).
 	//
 	// Example usage (sans error handling):
 	//

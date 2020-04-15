@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -21,7 +22,6 @@ import (
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/moby/buildkit/frontend/dockerfile/shell"
-	gw "github.com/moby/buildkit/frontend/gateway/client"
 	"github.com/moby/buildkit/solver/pb"
 	"github.com/moby/buildkit/util/apicaps"
 	"github.com/moby/buildkit/util/system"
@@ -239,7 +239,7 @@ func Dockerfile2LLB(ctx context.Context, dt []byte, opt ConvertOpt) (*llb.State,
 							prefix += platforms.Format(*platform) + " "
 						}
 						prefix += "internal]"
-						dgst, dt, err := metaResolver.ResolveImageConfig(ctx, d.stage.BaseName, gw.ResolveImageConfigOpt{
+						dgst, dt, err := metaResolver.ResolveImageConfig(ctx, d.stage.BaseName, llb.ResolveImageConfigOpt{
 							Platform:    platform,
 							ResolveMode: opt.ImageResolveMode.String(),
 							LogName:     fmt.Sprintf("%s load metadata for %s", prefix, d.stage.BaseName),
@@ -345,9 +345,10 @@ func Dockerfile2LLB(ctx context.Context, dt []byte, opt ConvertOpt) (*llb.State,
 			opt.copyImage = DefaultCopyImage
 		}
 
-		if err = dispatchOnBuild(d, d.image.Config.OnBuild, opt); err != nil {
+		if err = dispatchOnBuildTriggers(d, d.image.Config.OnBuild, opt); err != nil {
 			return nil, nil, err
 		}
+		d.image.Config.OnBuild = nil
 
 		for _, cmd := range d.commands {
 			if err := dispatch(d, cmd, opt); err != nil {
@@ -586,7 +587,7 @@ type command struct {
 	sources []*dispatchState
 }
 
-func dispatchOnBuild(d *dispatchState, triggers []string, opt dispatchOpt) error {
+func dispatchOnBuildTriggers(d *dispatchState, triggers []string, opt dispatchOpt) error {
 	for _, trigger := range triggers {
 		ast, err := parser.Parse(strings.NewReader(trigger))
 		if err != nil {
@@ -640,9 +641,20 @@ func dispatchRun(d *dispatchState, c *instructions.RunCommand, proxy *llb.ProxyE
 	}
 	opt = append(opt, runMounts...)
 
-	err = dispatchRunSecurity(d, c)
+	securityOpt, err := dispatchRunSecurity(c)
 	if err != nil {
 		return err
+	}
+	if securityOpt != nil {
+		opt = append(opt, securityOpt)
+	}
+
+	networkOpt, err := dispatchRunNetwork(c)
+	if err != nil {
+		return err
+	}
+	if networkOpt != nil {
+		opt = append(opt, networkOpt)
 	}
 
 	shlex := *dopt.shlex
@@ -1296,7 +1308,7 @@ func prefixCommand(ds *dispatchState, str string, prefixPlatform bool, platform 
 		out += ds.stageName + " "
 	}
 	ds.cmdIndex++
-	out += fmt.Sprintf("%d/%d] ", ds.cmdIndex, ds.cmdTotal)
+	out += fmt.Sprintf("%*d/%d] ", int(1+math.Log10(float64(ds.cmdTotal))), ds.cmdIndex, ds.cmdTotal)
 	return out + str
 }
 

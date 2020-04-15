@@ -253,6 +253,7 @@ func (t *Tokenizer) scanStream() (*Token, error) {
 					}
 				case spaceRuneClass:
 					{
+						t.input.UnreadRune()
 						token := &Token{
 							tokenType: tokenType,
 							value:     string(value)}
