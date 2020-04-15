@@ -78,3 +78,7 @@ func (provisioner *ProvisionerK3s) EdgeNodes() ([]string, error) {
 func (provisioner *ProvisionerK3s) InClusterDir(hostDir string) string {
 	return hostDir //k3s runs the server on the computer itself
 }
+
+func (provisioner *ProvisionerK3s) CheckRegistryInsecureOK() error {
+	return nil //TODO check that /etc/docker/daemon.json is ok
+}

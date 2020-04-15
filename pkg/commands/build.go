@@ -12,17 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
-
-func getRegistry(cliContext *cli.Context) (registryAddr string, registryInsecure bool, err error) {
-	provisioner, err := getProvisioner()
-
-	if err != nil {
-		return
-	}
-
-	return provisioner.Registry()
-}
 
 func createBuildInterface(forceNoninteractive bool) build.Interface {
 	if !forceNoninteractive {
@@ -43,14 +34,21 @@ func buildCommandAction(cliContext *cli.Context) error {
 	if addr := cliContext.String("registry"); addr != "" {
 		registry = addr
 	} else if cliContext.Bool("push") {
-		_, err := getProvisioner()
+		provisioner, err := getProvisioner()
 		if err != nil {
 			return cli.NewExitError(fmt.Sprintf("you must be in an environment with a provisioner to use --push while building: %s", err.Error()), 1)
 		}
 
-		registry, registryInsecure, err = getRegistry(cliContext)
+		registry, registryInsecure, err = provisioner.Registry()
 		if err != nil {
 			return cli.NewExitError(fmt.Sprintf("you specified --push, but a registry was not found: %s. Try \"sanic deploy\" first.", err.Error()), 1)
+		}
+
+		if registryInsecure {
+			err := provisioner.CheckRegistryInsecureOK()
+			if err != nil {
+				return cli.NewExitError(fmt.Sprintf("we can't push to the registry: %v", err), 1)
+			}
 		}
 	}
 
@@ -78,6 +76,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 	if len(services) == 0 {
 		return cli.NewExitError(fmt.Sprintf("%s (or some of its subdirectories) should contain a Dockerfile"), 1)
 	}
+
 
 	buildTag := cliContext.String("tag")
 	if buildTag == "" {
@@ -127,6 +126,7 @@ func buildCommandAction(cliContext *cli.Context) error {
 			)
 			if err != nil {
 				buildFailed = true
+				buildLogger.Log(finalService.Name, time.Now(), "Error: ", err.Error())
 			}
 			wg.Done()
 		}()

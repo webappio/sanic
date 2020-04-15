@@ -52,6 +52,10 @@ func (provisioner *ProvisionerExternal) InClusterDir(hostDir string) string {
 	return "<ERROR_IS_EXTERNAL_DO_NOT_LIVEMOUNT>"
 }
 
+func (provisioner *ProvisionerExternal) CheckRegistryInsecureOK() error {
+	return nil //not insecure
+}
+
 //Create returns a new ProvisionerLocalDev from the given arguments
 //noinspection GoUnusedParameter
 func Create(args map[string]string) *ProvisionerExternal {

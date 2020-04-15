@@ -16,6 +16,9 @@ type Provisioner interface {
 	// - registryInsecure: whether the registry uses HTTP (currently only used in localdev)
 	Registry() (registryAddr string, registryInsecure bool, err error)
 
+	//EnsureRegistryInsecureOK ensures that if the registry for this provisioner is insecure, that the user can push to it
+	CheckRegistryInsecureOK() error
+
 	//EdgeNodes returns a list of hostnames or IP addresses that will expose the edge nodes (where the ingress controllers are hosted)
 	EdgeNodes() ([]string, error)
 

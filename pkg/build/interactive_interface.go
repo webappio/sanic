@@ -237,6 +237,8 @@ func (iface *interactiveInterface) StartJob(service string, image string) {
 }
 
 func (iface *interactiveInterface) FailJob(service string, err error) {
+	iface.ProcessLog(service, "Error! " + err.Error())
+
 	iface.mutex.Lock()
 	defer iface.mutex.Unlock()
 
