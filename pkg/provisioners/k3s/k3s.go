@@ -1,9 +1,7 @@
 package k3s
 
 import (
-	"context"
 	"fmt"
-	provisionerutil "github.com/distributed-containers-inc/sanic/pkg/provisioners/util"
 	"github.com/pkg/errors"
 	"os"
 	"os/exec"
@@ -16,7 +14,8 @@ type ProvisionerK3s struct {
 
 //EnsureCluster just ensures the registry is running
 func (provisioner *ProvisionerK3s) EnsureCluster() error {
-	return provisionerutil.StartRegistry(provisioner, context.Background(), map[string]string{"node-role.kubernetes.io/master": "true"})
+	// no-op (don't need a registry for k3s)
+	return nil
 }
 
 //KubectlCommand for k3s is just a wrapper around "k3s kubectl"
@@ -31,25 +30,8 @@ func (provisioner *ProvisionerK3s) KubectlCommand(args ...string) (*exec.Cmd, er
 }
 
 func (provisioner *ProvisionerK3s) Registry() (registryAddr string, registryInsecure bool, err error) {
-	cmd, err := provisioner.KubectlCommand(
-		"get", "pod",
-		"--namespace", "kube-system",
-		"--selector", "k8s-app=sanic-registry",
-		"--output", "jsonpath={.items[0].status.podIP}",
-	)
-	if err != nil {
-		return
-	}
-	out, err := cmd.Output()
-	if err != nil {
-		return
-	}
-	ip := strings.TrimSpace(string(out))
-	if ip == "" {
-		err = fmt.Errorf("could not connect to registry - try 'sanic deploy' and waiting 90 seconds")
-		return
-	}
-	registryAddr = fmt.Sprintf("%s:5000", ip)
+	// no-op (don't need a registry for k3s)
+	registryAddr = "localhost:5000"
 	registryInsecure = true
 	return
 }
