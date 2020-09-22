@@ -107,13 +107,20 @@ func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
 		"--rm",
 		"-v", folderIn+"/:/in:ro",
 		"-v", tempFolderOut+"/:/out",
+	)
+	
+	for _, env := range os.Environ() {
+		cmd.Args = append(cmd.Args, "-e", env)	
+	}
+	
+	cmd.Args = append(cmd.Args, 
 		"-e", "SANIC_ENV="+shl.GetSanicEnvironment(),
 		"-e", "REGISTRY_HOST="+registry,
 		"-e", "IMAGE_TAG="+buildTag,
 		"-e", "PROJECT_DIR="+provisioner.InClusterDir(shl.GetSanicRoot()),
 		"-e", "NAMESPACE="+namespace,
-		templaterImage,
-	)
+		templaterImage)
+	
 	stderrBuffer := &bytes.Buffer{}
 	cmd.Stderr = stderrBuffer
 	err = cmd.Run()
