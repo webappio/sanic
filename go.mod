@@ -1,4 +1,4 @@
-module github.com/distributed-containers-inc/sanic
+module github.com/layer-devops/sanic
 
 go 1.12
 

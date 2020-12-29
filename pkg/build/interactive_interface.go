@@ -2,7 +2,7 @@ package build
 
 import (
 	"fmt"
-	"github.com/distributed-containers-inc/sanic/pkg/util"
+	"github.com/layer-devops/sanic/pkg/util"
 	"github.com/gdamore/tcell"
 	"sort"
 	"strings"

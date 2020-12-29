@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/distributed-containers-inc/sanic/pkg/commands"
+	"github.com/layer-devops/sanic/pkg/commands"
 	"github.com/urfave/cli"
 	"log"
 	"os"

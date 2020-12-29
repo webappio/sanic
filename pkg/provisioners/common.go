@@ -2,9 +2,9 @@ package provisioners
 
 import (
 	"fmt"
-	"github.com/distributed-containers-inc/sanic/pkg/provisioners/external"
-	"github.com/distributed-containers-inc/sanic/pkg/provisioners/k3s"
-	"github.com/distributed-containers-inc/sanic/pkg/provisioners/provisioner"
+	"github.com/layer-devops/sanic/pkg/provisioners/external"
+	"github.com/layer-devops/sanic/pkg/provisioners/k3s"
+	"github.com/layer-devops/sanic/pkg/provisioners/provisioner"
 )
 
 type provisionerBuilder func(map[string]string) provisioner.Provisioner
