@@ -70,6 +70,8 @@ func NewInteractiveInterface() (Interface, error) {
 		}
 	}()
 
+	iface.screen = screen
+
 	go func() {
 		for iface.running {
 			iface.redrawScreen()
@@ -77,13 +79,12 @@ func NewInteractiveInterface() (Interface, error) {
 		}
 	}()
 
-	iface.screen = screen
-
 	return iface, nil
 }
 
 func (iface *interactiveInterface) redrawScreen() {
 	defer func() {
+		iface.running = false
 		r := recover()
 		if r != nil {
 			iface.Close()
