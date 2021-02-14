@@ -84,7 +84,6 @@ func NewInteractiveInterface() (Interface, error) {
 
 func (iface *interactiveInterface) redrawScreen() {
 	defer func() {
-		iface.running = false
 		r := recover()
 		if r != nil {
 			iface.Close()
