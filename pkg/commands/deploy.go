@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -49,6 +50,7 @@ func pullImageIfNotExists(image string) error {
 }
 
 func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
+	log.Printf("hey!!! I'm in!!!\n")
 	if namespace == "" {
 		namespace = "<ERROR_NAMESPACE_NOT_DEFINED_IN_THIS_ENV>"
 	}
@@ -216,6 +218,7 @@ func deployCommandAction(cliContext *cli.Context) error {
 		return cli.NewExitError(err.Error(), 1)
 	}
 	err = runTemplater(folderIn, folderOut, cfg.Deploy.TemplaterImage, env.Namespace)
+	log.Printf("hey!!! no error???\n")
 	if err != nil {
 		return cli.NewExitError(fmt.Sprintf("could not compile templates: %s", err.Error()), 1)
 	}
@@ -230,7 +233,7 @@ func deployCommandAction(cliContext *cli.Context) error {
 	}
 	err = kubectlApplyFolder(folderOut, provisioner)
 	if err != nil {
-		return cli.NewExitError(fmt.Sprintf("could not apply templates in %s: %s", folderOut, err.Error()), 1)
+		return cli.NewExitError(fmt.Sprintf("could not apply templates in!!! %s: %s", folderOut, err.Error()), 1)
 	}
 	edgeNodes, err := provisioner.EdgeNodes()
 	if err != nil {

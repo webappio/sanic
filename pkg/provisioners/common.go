@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/layer-devops/sanic/pkg/provisioners/external"
 	"github.com/layer-devops/sanic/pkg/provisioners/k3s"
+	"github.com/layer-devops/sanic/pkg/provisioners/minikube"
 	"github.com/layer-devops/sanic/pkg/provisioners/provisioner"
 )
 
@@ -16,7 +17,11 @@ var provisionerBuilders = map[string]provisionerBuilder{
 	"k3s": func(args map[string]string) provisioner.Provisioner {
 		return &k3s.ProvisionerK3s{}
 	},
+	"minikube": func(args map[string]string) provisioner.Provisioner {
+		return &minikube.ProvisionerMinikube{}
+	},
 }
+
 
 type provisionerConfigValidator func(map[string]string) error
 
@@ -27,6 +32,12 @@ var provisionerValidators = map[string]provisionerConfigValidator{
 	"k3s": func(args map[string]string) error {
 		for k := range args {
 			return fmt.Errorf("k3s takes no arguments, got %s", k)
+		}
+		return nil
+	},
+	"minikube": func(args map[string]string) error {
+		for k := range args {
+			return fmt.Errorf("minikube takes no arguments, got %s", k)
 		}
 		return nil
 	},
