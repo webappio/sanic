@@ -1,11 +1,9 @@
 package minikube
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 //ProvisionerMinikube starts minikube server
@@ -37,28 +35,11 @@ func (provisioner *ProvisionerMinikube) Registry() (registryAddr string, registr
 }
 
 func (provisioner *ProvisionerMinikube) EdgeNodes() ([]string, error) {
-	cmd, err := provisioner.KubectlCommand(
-		"get", "services",
-		"-n", "kube-system",
-		"-o", "jsonpath={.spec.clusterIP}",
-		"traefik",
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get the traefik service")
-	}
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get the traefik service")
-	}
-	ip := strings.TrimSpace(string(out))
-	if ip == "" {
-		return nil, fmt.Errorf("could not get the IP of the traefik service")
-	}
-	return []string{ip}, nil
+	return []string{}, nil
 }
 
 func (provisioner *ProvisionerMinikube) InClusterDir(hostDir string) string {
-	return hostDir //minikube runs the server on the computer itself
+	return hostDir
 }
 
 func (provisioner *ProvisionerMinikube) CheckRegistryInsecureOK() error {
