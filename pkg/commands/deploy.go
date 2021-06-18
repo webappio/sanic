@@ -121,7 +121,11 @@ func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
 
 	fmt.Printf("Templating %d config files...\n", len(files))
 
-	os.Setenv("SANIC_ENV",shl.GetSanicEnvironment())
+	if (shl.GetSanicEnvironment() == "ci") {
+		os.Setenv("SANIC_ENV","dev")
+	} else {
+		os.Setenv("SANIC_ENV",shl.GetSanicEnvironment())
+	}
 	os.Setenv("REGISTRY_HOST",registry)
 	os.Setenv("IMAGE_TAG", buildTag)
 	os.Setenv("PROJECT_DIR", provisioner.InClusterDir(shl.GetSanicRoot()))
@@ -246,7 +250,7 @@ func deployCommandAction(cliContext *cli.Context) error {
 	}
 	switch provisioner.(type){
 	case *minikube.ProvisionerMinikube:
-		fmt.Printf("Skip checking edge nodes for minikube")
+		fmt.Printf("Skip checking edge nodes for minikube\n")
 	default:
 		edgeNodes, err := provisioner.EdgeNodes()
 		if err != nil {
