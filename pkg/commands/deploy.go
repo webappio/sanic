@@ -111,17 +111,24 @@ func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
 		return fmt.Errorf("could not pull the templater image %s: %s", templaterImage, err)
 	}
 
-	files, err := filepath.Glob(folderIn+"/*.tmpl")
+	allFiles, err := ioutil.ReadDir(folderIn)
+	if err != nil {
+		return errors.Wrap(err, "could not read template files at "+folderIn)
+	}
+
+	var files []string
+	for _, file := range allFiles {
+		if strings.HasSuffix(file.Name(), ".tmpl") {
+			files = append(files, filepath.Join(folderIn, file.Name()))
+		}
+	}
 	if len(files) == 0 {
 		return fmt.Errorf("No configuration files were specified at /in/... with suffix '.tmpl'\n")
 	}
-	if err != nil {
-		return fmt.Errorf("could not read the templated deployment files: %s", err.Error())
-	}
 
-	fmt.Printf("Templating %d config files...\n", len(files))
+	fmt.Printf("Templating %d config files (%d total found)...\n", len(files), len(allFiles))
 
-	if (shl.GetSanicEnvironment() == "ci") {
+	if shl.GetSanicEnvironment() == "ci" {
 		os.Setenv("SANIC_ENV","dev")
 	} else {
 		os.Setenv("SANIC_ENV",shl.GetSanicEnvironment())
