@@ -1,4 +1,4 @@
-module github.com/layer-devops/sanic
+module github.com/webappio/sanic
 
 go 1.12
 

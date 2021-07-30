@@ -2,7 +2,7 @@ package build
 
 import (
 	"fmt"
-	"github.com/layer-devops/sanic/pkg/util"
+	"github.com/webappio/sanic/pkg/util"
 	"github.com/gdamore/tcell"
 	"sort"
 	"strings"

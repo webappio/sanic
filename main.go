@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/layer-devops/sanic/pkg/commands"
+	"github.com/webappio/sanic/pkg/commands"
 	"github.com/urfave/cli"
 	"log"
 	"os"

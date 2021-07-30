@@ -2,8 +2,8 @@ package commands
 
 import (
 	"fmt"
-	"github.com/layer-devops/sanic/pkg/config"
-	"github.com/layer-devops/sanic/pkg/shell"
+	"github.com/webappio/sanic/pkg/config"
+	"github.com/webappio/sanic/pkg/shell"
 	"github.com/urfave/cli"
 	"os"
 	"path/filepath"

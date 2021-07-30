@@ -2,10 +2,10 @@ package provisioners
 
 import (
 	"fmt"
-	"github.com/layer-devops/sanic/pkg/provisioners/external"
-	"github.com/layer-devops/sanic/pkg/provisioners/k3s"
-	"github.com/layer-devops/sanic/pkg/provisioners/minikube"
-	"github.com/layer-devops/sanic/pkg/provisioners/provisioner"
+	"github.com/webappio/sanic/pkg/provisioners/external"
+	"github.com/webappio/sanic/pkg/provisioners/k3s"
+	"github.com/webappio/sanic/pkg/provisioners/minikube"
+	"github.com/webappio/sanic/pkg/provisioners/provisioner"
 )
 
 type provisionerBuilder func(map[string]string) provisioner.Provisioner

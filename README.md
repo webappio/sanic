@@ -1,7 +1,6 @@
-[![Go Report Card](https://goreportcard.com/badge/github.com/layer-devops/sanic)](https://goreportcard.com/report/github.com/layer-devops/sanic)
+[![Go Report Card](https://goreportcard.com/badge/github.com/webappio/sanic)](https://goreportcard.com/report/github.com/webappio/sanic)
 [![Slack channel](https://img.shields.io/badge/slack-%23sanic-green.svg)](https://distributedcontainers.slack.com)
 [![Support email](https://img.shields.io/badge/email-helpme%40sanic.io-blue.svg)](mailto:helpme@sanic.io)
-[![Acceptance tests](https://layerci.com/badge/github/layer-devops/sanic)](https://layerci.com/jobs/github/layer-devops/sanic)
 
 # Sanic Omnitool
 
@@ -34,7 +33,7 @@ This allows you to overwrite the contents of the Dockerfile with your actual sou
 #### Templating
 We believe that developers shouldn't have to learn a new templating language for every tool.  If you use Mako for your webserver, you should have web.yaml.mako to generate your kubernetes configuration.  This lets new developers ramp up faster.
 
-If your templating language isn't supported, you can create a new image and sanic will use it with ease! See [sanic-templater-golang](https://github.com/layer-devops/sanic-templater-golang) for an example.
+If your templating language isn't supported, you can create a new image and sanic will use it with ease! See [sanic-templater-golang](https://github.com/webappio/sanic-templater-golang) for an example.
 
 Built templates go into an /out folder, so if there are any errors, it's easy to see exactly where they are.
 
@@ -51,8 +50,8 @@ Built templates go into an /out folder, so if there are any errors, it's easy to
 A simple app which consists of three Docker services: A [Python Flask](http://flask.pocoo.org/) api server and web server, and a [Redis](https://redis.io/) container
 
 To try it out:
-1. `go get github.com/layer-devops/sanic`
-2. `cd $GOPATH/src/github.com/layer-devops/sanic`
+1. `go get github.com/webappio/sanic`
+2. `cd $GOPATH/src/github.com/webappio/sanic`
 3. `GO111MODULE=on go install`
 4. `cd examples/timestamp-as-a-service`
 5. `sanic env dev`
@@ -113,10 +112,10 @@ commands:
 # the deploy block tells sanic how to deal with your kubernetes resources
 deploy:
   # for the "kustomize" template language, use "distributedcontainers/templater-kustomize"
-  # - https://github.com/layer-devops/sanic-templater-kustomize
+  # - https://github.com/webappio/sanic-templater-kustomize
   #
   # for the go language templates, use "distributedcontainers/templater-golang" 
-  # - https://github.com/layer-devops/sanic-templater-golang
+  # - https://github.com/webappio/sanic-templater-golang
   #
   # for any other language, feel free to make your own templater image and open an issue to have it included here.
   templaterImage: distributedcontainers/templater-kustomize

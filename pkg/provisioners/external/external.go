@@ -2,7 +2,7 @@ package external
 
 import (
 	"fmt"
-	"github.com/layer-devops/sanic/pkg/util"
+	"github.com/webappio/sanic/pkg/util"
 	"github.com/pkg/errors"
 	"os"
 	"os/exec"

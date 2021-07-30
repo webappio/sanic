@@ -3,8 +3,8 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/layer-devops/sanic/pkg/provisioners"
-	"github.com/layer-devops/sanic/pkg/shell"
+	"github.com/webappio/sanic/pkg/provisioners"
+	"github.com/webappio/sanic/pkg/shell"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"

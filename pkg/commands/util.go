@@ -3,10 +3,10 @@ package commands
 import (
 	"errors"
 	"fmt"
-	"github.com/layer-devops/sanic/pkg/config"
-	"github.com/layer-devops/sanic/pkg/provisioners"
-	"github.com/layer-devops/sanic/pkg/provisioners/provisioner"
-	"github.com/layer-devops/sanic/pkg/shell"
+	"github.com/webappio/sanic/pkg/config"
+	"github.com/webappio/sanic/pkg/provisioners"
+	"github.com/webappio/sanic/pkg/provisioners/provisioner"
+	"github.com/webappio/sanic/pkg/shell"
 	"github.com/urfave/cli"
 )
 

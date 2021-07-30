@@ -3,12 +3,12 @@ package commands
 import (
 	"bytes"
 	"fmt"
-	"github.com/layer-devops/sanic/pkg/bridge/git"
-	"github.com/layer-devops/sanic/pkg/config"
-	"github.com/layer-devops/sanic/pkg/provisioners/minikube"
-	"github.com/layer-devops/sanic/pkg/provisioners/provisioner"
-	"github.com/layer-devops/sanic/pkg/shell"
-	"github.com/layer-devops/sanic/pkg/util"
+	"github.com/webappio/sanic/pkg/bridge/git"
+	"github.com/webappio/sanic/pkg/config"
+	"github.com/webappio/sanic/pkg/provisioners/minikube"
+	"github.com/webappio/sanic/pkg/provisioners/provisioner"
+	"github.com/webappio/sanic/pkg/shell"
+	"github.com/webappio/sanic/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"io/ioutil"
@@ -223,7 +223,7 @@ func deployCommandAction(cliContext *cli.Context) error {
 	}
 
 	if _, err := os.Stat(folderIn); err != nil {
-		return cli.NewExitError(fmt.Sprintf("The input folder at %s could not be read. Does it exist? %s\nSee https://github.com/layer-devops/sanic-site for an example.", folderIn, err.Error()), 1)
+		return cli.NewExitError(fmt.Sprintf("The input folder at %s could not be read. Does it exist? %s\nSee https://github.com/webappio/sanic-site for an example.", folderIn, err.Error()), 1)
 	}
 	err = os.MkdirAll(folderOut, 0750)
 	if err != nil {
