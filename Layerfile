@@ -31,4 +31,3 @@ WORKDIR /example/timestamp-as-a-service
 RUN mkdir -p ~/.kube && touch ~/.kube/sanic.io.config
 RUN sanic env dev sanic run print_env | grep "in dev!"
 RUN sanic env dev sanic build
-ARTIFACT PUBLIC /go/bin/sanic
