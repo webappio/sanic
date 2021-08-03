@@ -58,7 +58,7 @@ func pullImageIfNotExists(image string) error {
 	return cmd.Run()
 }
 
-func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
+func runTemplater(folderIn, folderOut, templaterImage, namespace string, args cli.Args) error {
 	if namespace == "" {
 		namespace = "<ERROR_NAMESPACE_NOT_DEFINED_IN_THIS_ENV>"
 	}
@@ -117,13 +117,24 @@ func runTemplater(folderIn, folderOut, templaterImage, namespace string) error {
 	}
 
 	var files []string
-	for _, file := range allFiles {
-		if strings.HasSuffix(file.Name(), ".tmpl") {
-			files = append(files, filepath.Join(folderIn, file.Name()))
+	if args.Present() {
+		for _, file := range allFiles {
+			for _, arg := range args {
+				if file.Name() == arg {
+					files = append(files, filepath.Join(folderIn, file.Name()))
+					break
+				}
+			}
+		}
+	} else {
+		for _, file := range allFiles {
+			if strings.HasSuffix(file.Name(), ".tmpl") {
+				files = append(files, filepath.Join(folderIn, file.Name()))
+			}
 		}
 	}
 	if len(files) == 0 {
-		return fmt.Errorf("No configuration files were specified at /in/... with suffix '.tmpl'\n")
+		return fmt.Errorf("No configuration files were found\n")
 	}
 
 	fmt.Printf("Templating %d config files (%d total found)...\n", len(files), len(allFiles))
@@ -238,7 +249,7 @@ func deployCommandAction(cliContext *cli.Context) error {
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
-	err = runTemplater(folderIn, folderOut, cfg.Deploy.TemplaterImage, env.Namespace)
+	err = runTemplater(folderIn, folderOut, cfg.Deploy.TemplaterImage, env.Namespace, cliContext.Args())
 	if err != nil {
 		return cli.NewExitError(fmt.Sprintf("could not compile templates: %s", err.Error()), 1)
 	}
@@ -274,6 +285,6 @@ func deployCommandAction(cliContext *cli.Context) error {
 
 var deployCommand = cli.Command{
 	Name:   "deploy",
-	Usage:  "deploy some (or all, by default) services",
+	Usage:  "deploy [service name...]",
 	Action: deployCommandAction,
 }
