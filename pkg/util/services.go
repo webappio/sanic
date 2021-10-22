@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"fmt"
 )
 
 type BuildableService struct {
@@ -23,6 +24,10 @@ func FindServices(dir string, ignorePaths []string) ([]BuildableService, error) 
 	var ret []BuildableService
 
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
 		for _, ignorePath := range ignorePaths {
 			if filepath.Clean(filepath.Join(dir, ignorePath)) == path {
 				return filepath.SkipDir
