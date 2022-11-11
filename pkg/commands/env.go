@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"github.com/webappio/sanic/pkg/config"
+	"github.com/webappio/sanic/pkg/provisioners"
 	"github.com/webappio/sanic/pkg/shell"
 	"github.com/urfave/cli"
 	"os"
@@ -35,14 +36,20 @@ func findSanicConfig() (configPath string, err error) {
 	}
 }
 
-func checkConfigAndEnv(configFile, env string) error {
+func checkConfigAndEnv(configFile, envName string) error {
 	projectName := filepath.Base(filepath.Dir(configFile))
 	cfg, err := config.ReadFromPath(configFile)
 	if err != nil {
 		return err
 	}
-	if !cfg.HasEnvironment(env) {
+	env, ok := cfg.Environments[envName]
+	if !ok {
 		return fmt.Errorf("environment %s does not exist in project %s", env, projectName)
+	}
+	if err := provisioners.ValidateProvisionerConfig(env.ClusterProvisioner, env.ClusterProvisionerArgs); err != nil {
+		return fmt.Errorf(
+			"configuration file error: arguments provided to provisioner %s of type %s were invalid: %s",
+			envName, env.ClusterProvisioner, err.Error())
 	}
 	return nil
 }

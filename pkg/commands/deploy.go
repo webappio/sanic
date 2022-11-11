@@ -3,16 +3,14 @@ package commands
 import (
 	"bytes"
 	"fmt"
+	"github.com/pkg/errors"
+	"github.com/urfave/cli"
 	"github.com/webappio/sanic/pkg/bridge/git"
 	"github.com/webappio/sanic/pkg/config"
-	"github.com/webappio/sanic/pkg/provisioners/minikube"
 	"github.com/webappio/sanic/pkg/provisioners/provisioner"
 	"github.com/webappio/sanic/pkg/shell"
 	"github.com/webappio/sanic/pkg/util"
-	"github.com/pkg/errors"
-	"github.com/urfave/cli"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -266,20 +264,7 @@ func deployCommandAction(cliContext *cli.Context) error {
 	if err != nil {
 		return cli.NewExitError(fmt.Sprintf("could not apply templates in %s: %s", folderOut, err.Error()), 1)
 	}
-	switch provisioner.(type){
-	case *minikube.ProvisionerMinikube:
-		fmt.Printf("Skip checking edge nodes for minikube\n")
-	default:
-		edgeNodes, err := provisioner.EdgeNodes()
-		if err != nil {
-			return cli.NewExitError(fmt.Sprintf("could not find edge routers: %s", err.Error()), 1)
-		}
-		if len(edgeNodes) == 0 {
-			//this shouldn't happen: environment is misconfigured?
-			return cli.NewExitError("there are no edge routers in this environment. Try reprovisioning your cluster", 1)
-		}
-		fmt.Printf("Configured HTTP services are available at http://%s\n", edgeNodes[rand.Intn(len(edgeNodes))])
-	}
+	fmt.Println("[sanic] Deploy finished.")
 	return nil
 }
 

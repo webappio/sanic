@@ -2,17 +2,15 @@ package external
 
 import (
 	"fmt"
-	"github.com/webappio/sanic/pkg/util"
 	"github.com/pkg/errors"
+	"github.com/webappio/sanic/pkg/util"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 //ProvisionerExternal simply wraps an existing kubernetes cluster (accessed via kubectl) and registry
 type ProvisionerExternal struct {
 	kubeConfigLocation string
-	edgeNodes          []string
 	registry           string
 }
 
@@ -44,10 +42,6 @@ func (provisioner *ProvisionerExternal) Registry() (registryAddr string, registr
 	return
 }
 
-func (provisioner *ProvisionerExternal) EdgeNodes() ([]string, error) {
-	return provisioner.edgeNodes, nil
-}
-
 func (provisioner *ProvisionerExternal) InClusterDir(hostDir string) string {
 	return "<ERROR_IS_EXTERNAL_DO_NOT_LIVEMOUNT>"
 }
@@ -68,9 +62,6 @@ func Create(args map[string]string) *ProvisionerExternal {
 	provisioner := &ProvisionerExternal{
 		kubeConfigLocation: config,
 		registry:           args["registry"],
-	}
-	if edgeNodes, exists := args["edgeNodes"]; exists {
-		provisioner.edgeNodes = strings.Split(edgeNodes, ",")
 	}
 	return provisioner
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/webappio/sanic/pkg/provisioners/external"
 	"github.com/webappio/sanic/pkg/provisioners/k3s"
-	"github.com/webappio/sanic/pkg/provisioners/minikube"
 	"github.com/webappio/sanic/pkg/provisioners/provisioner"
 )
 
@@ -16,9 +15,6 @@ var provisionerBuilders = map[string]provisionerBuilder{
 	},
 	"k3s": func(args map[string]string) provisioner.Provisioner {
 		return &k3s.ProvisionerK3s{}
-	},
-	"minikube": func(args map[string]string) provisioner.Provisioner {
-		return &minikube.ProvisionerMinikube{}
 	},
 }
 
