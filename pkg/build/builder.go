@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/webappio/sanic/pkg/util"
 	"github.com/pkg/errors"
+	"github.com/webappio/sanic/pkg/util"
 	"os/exec"
 	"time"
 )
@@ -58,7 +58,12 @@ func (builder *Builder) BuildService(ctx context.Context, service util.Buildable
 
 	builder.Interface.StartJob(service.Name, fullImageName)
 
-	cmd := exec.Command("docker", "build", ".", "--file", service.Dockerfile, "--tag", fullImageName)
+	cmd := exec.Command("docker", "build",
+		"--build-arg", "SANIC_ENV",
+		"--build-arg", "CI",
+		".",
+		"--file", service.Dockerfile,
+		"--tag", fullImageName)
 	cmd.Dir = service.Dir
 
 

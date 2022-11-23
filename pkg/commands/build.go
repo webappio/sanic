@@ -11,6 +11,7 @@ import (
 	"github.com/urfave/cli"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -112,12 +113,24 @@ func buildCommandAction(cliContext *cli.Context) error {
 		DoPush:           cliContext.Bool("push"),
 	}
 
+	maxParallelism := cliContext.Int("max-parallelism")
+	parallelismCredits := make(chan interface{}, 128)
+	if maxParallelism <= 0 {
+		maxParallelism = runtime.NumCPU()
+	}
+
+	for i := 0; i < maxParallelism; i += 1 {
+		parallelismCredits <- true
+	}
+
 	buildFailed := false
 
 	var wg sync.WaitGroup
 	for _, service := range services {
 		finalService := service
+		wg.Add(1)
 		go func() {
+			<-parallelismCredits
 			ctx, cancelJob := context.WithCancel(context.Background())
 			buildInterface.AddCancelListener(cancelJob)
 			err := builder.BuildService(
@@ -128,9 +141,9 @@ func buildCommandAction(cliContext *cli.Context) error {
 				buildFailed = true
 				buildLogger.Log(finalService.Name, time.Now(), "Error: ", err.Error())
 			}
+			parallelismCredits <- true
 			wg.Done()
 		}()
-		wg.Add(1)
 	}
 
 	userCancelledBuild := false
@@ -175,6 +188,10 @@ var buildCommand = cli.Command{
 		cli.BoolFlag{
 			Name:  "verbose",
 			Usage: "enables verbose logging, mostly for sanic development",
+		},
+		cli.IntFlag{
+			Name: "max-parallelism,j",
+			Usage: "sets the maximum parallel builds that will occur",
 		},
 	},
 }
