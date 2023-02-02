@@ -9,4 +9,4 @@ itsdangerous==1.1.0
 Jinja2==2.11.3
 MarkupSafe==1.1.1
 redis==3.2.1
-Werkzeug==0.15.3
+Werkzeug==0.15.5
