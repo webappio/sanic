@@ -4,7 +4,7 @@
 # See, for example, "pip freeze"
 
 Click==7.0
-Flask==1.0.2
+Flask==2.3.2
 itsdangerous==1.1.0
 Jinja2==2.11.3
 MarkupSafe==1.1.1
