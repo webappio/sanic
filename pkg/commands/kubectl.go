@@ -1,36 +1,32 @@
 package commands
 
 import (
-	"github.com/webappio/sanic/pkg/config"
-	"github.com/webappio/sanic/pkg/shell"
 	"github.com/urfave/cli"
 	"syscall"
 )
 
 func kubectlCommandAction(cliContext *cli.Context) error {
-	cfg, err := config.Read()
-	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
-	}
-
-	s, err := shell.Current()
-	if err != nil {
-		return cli.NewExitError(err.Error(), 1)
-	}
-
 	provisioner, err := getProvisioner()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
 
-	args := []string{}
-	if env, err := cfg.CurrentEnvironment(s); err == nil {
-		if env.Namespace != "" {
-			args = append(args, "--namespace="+env.Namespace)
+	args := cliContext.Args()
+	namespace, err := getNamespaceFromArgs(cliContext.Args())
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
+
+	if namespace == "" {
+		namespace, err = getNamespaceFromEnv()
+		if err != nil {
+			return cli.NewExitError(err.Error(), 1)
+		}
+		if namespace != "" {
+			args = append([]string{"--namespace="+namespace}, args...)
 		}
 	}
 
-	args = append(args, cliContext.Args()...)
 	cmd, err := provisioner.KubectlCommand(args...)
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
