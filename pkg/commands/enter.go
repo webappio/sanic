@@ -11,15 +11,24 @@ import (
 )
 
 func enterCommandAction(cliContext *cli.Context) error {
-	if cliContext.NArg() != 1 {
-		return newUsageError(cliContext)
-	}
-
 	provisioner, err := getProvisioner()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
-	cmd, err := provisioner.KubectlCommand("get", "pods", "-o", "jsonpath={.items[*].metadata.name}")
+
+	if namespace == "" {
+		namespace, err = getNamespaceFromEnv()
+		if err != nil {
+			return cli.NewExitError(err.Error(), 1)
+		}
+	}
+
+	var args []string
+	if namespace != "" {
+		args = append(args, "--namespace", namespace)
+	}
+	args = append(args, "get", "pods", "-o", "jsonpath={.items[*].metadata.name}")
+	cmd, err := provisioner.KubectlCommand(args...)
 	if err != nil {
 		return errors.Wrap(err, "error while getting kubernetes pods")
 	}
@@ -65,8 +74,18 @@ func enterCommandAction(cliContext *cli.Context) error {
 		1)
 }
 
+var namespace string
+
 var enterCommand = cli.Command{
 	Name:   "enter",
 	Usage:  "sanic enter [pod unique name substring]",
 	Action: enterCommandAction,
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:        "n",
+			Usage:       "specify namespace of pod to enter",
+			Required:    false,
+			Destination: &namespace,
+		},
+	},
 }
