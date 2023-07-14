@@ -56,7 +56,7 @@ func pullImageIfNotExists(image string) error {
 	return cmd.Run()
 }
 
-func runTemplater(folderIn, folderOut, templaterImage string, args cli.Args) error {
+func runTemplater(folderIn, folderOut, templaterImage, namespace string, args cli.Args) error {
 	cfg, err := config.Read()
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
@@ -141,6 +141,7 @@ func runTemplater(folderIn, folderOut, templaterImage string, args cli.Args) err
 	os.Setenv("REGISTRY_HOST",registry)
 	os.Setenv("IMAGE_TAG", buildTag)
 	os.Setenv("PROJECT_DIR", provisioner.InClusterDir(shl.GetSanicRoot()))
+	os.Setenv("NAMESPACE", namespace)
 
 	for _, templatepath := range files {
 		templateName := strings.TrimSuffix(filepath.Base(templatepath), ".tmpl")
@@ -247,7 +248,7 @@ func deployCommandAction(cliContext *cli.Context) error {
 	if err != nil {
 		return cli.NewExitError(err.Error(), 1)
 	}
-	err = runTemplater(folderIn, folderOut, cfg.Deploy.TemplaterImage, cliContext.Args())
+	err = runTemplater(folderIn, folderOut, cfg.Deploy.TemplaterImage, env.Namespace, cliContext.Args())
 	if err != nil {
 		return cli.NewExitError(fmt.Sprintf("could not compile templates: %s", err.Error()), 1)
 	}
