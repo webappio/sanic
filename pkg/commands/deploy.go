@@ -190,11 +190,10 @@ func createNamespace(namespace string, provisioner provisioner.Provisioner) erro
 }
 
 func kubectlApplyFolder(folder, namespace string, provisioner provisioner.Provisioner) error {
-	var args []string
+	args := []string{"apply", "-f", folder}
 	if namespace != "" {
 		args = append(args, "--namespace="+namespace)
 	}
-	args = append(args, "apply", "-f", folder)
 	cmd, err := provisioner.KubectlCommand(args...)
 	if err != nil {
 		return errors.Wrapf(err, "error while applying folder %s", folder)
