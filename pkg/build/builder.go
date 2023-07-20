@@ -16,6 +16,7 @@ type Builder struct {
 	Registry         string
 	RegistryInsecure bool
 	BuildTag         string
+	NameSpace        string
 	Logger           Logger
 	Interface        Interface
 	DoPush           bool
@@ -52,8 +53,11 @@ func (builder *Builder) runCommandAndOutput(cmd *exec.Cmd, ctx context.Context, 
 //BuildService builds a specific sevice directory with a specific context
 func (builder *Builder) BuildService(ctx context.Context, service util.BuildableService) error {
 	fullImageName := fmt.Sprintf("%s:%s", service.Name, builder.BuildTag)
+	if builder.NameSpace != "" {
+		fullImageName = fmt.Sprintf("%s-%s:%s", builder.NameSpace, service.Name, builder.BuildTag)
+	}
 	if builder.Registry != "" {
-		fullImageName = fmt.Sprintf("%s/%s:%s", builder.Registry, service.Name, builder.BuildTag)
+		fullImageName = fmt.Sprintf("%s/%s", builder.Registry, fullImageName)
 	}
 
 	builder.Interface.StartJob(service.Name, fullImageName)
@@ -65,7 +69,6 @@ func (builder *Builder) BuildService(ctx context.Context, service util.Buildable
 		"--file", service.Dockerfile,
 		"--tag", fullImageName)
 	cmd.Dir = service.Dir
-
 
 	err := builder.runCommandAndOutput(cmd, ctx, service.Name)
 	if err != nil {
@@ -80,7 +83,7 @@ func (builder *Builder) BuildService(ctx context.Context, service util.Buildable
 		err = builder.runCommandAndOutput(cmd, ctx, service.Name)
 		if err != nil {
 			builder.Interface.FailJob(service.Name, err)
-			return errors.Wrap(err, "could not push " + service.Name)
+			return errors.Wrap(err, "could not push "+service.Name)
 		}
 	}
 
