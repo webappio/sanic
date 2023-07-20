@@ -104,10 +104,16 @@ func buildCommandAction(cliContext *cli.Context) error {
 	buildLogger.AddLogLineListener(buildInterface.ProcessLog)
 	defer buildLogger.Close()
 
+	namespace, err = getNamespaceFromEnv()
+	if err != nil {
+		return cli.NewExitError(err.Error(), 1)
+	}
+
 	builder := build.Builder{
 		Registry:         registry,
 		RegistryInsecure: registryInsecure,
 		BuildTag:         buildTag,
+		NameSpace:        namespace,
 		Logger:           buildLogger,
 		Interface:        buildInterface,
 		DoPush:           cliContext.Bool("push"),
